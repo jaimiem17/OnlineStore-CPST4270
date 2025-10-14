@@ -1,25 +1,40 @@
 import java.util.ArrayList;
 
-public class Shoe {
+public class Product {
     private String name;
     private String storeName;
     private String description;
     private ArrayList<String> review;
+    private int quantity;
+    private double price;
+    private ProductCategory category;
 
-    public Shoe(String name, int quantity, double price, String description, String storeName) {
+    // Backward-compatible constructor that defaults to SHOES category
+    public Product(String name, int quantity, double price, String description, String storeName) {
         this.name = name;
         this.storeName = storeName;
         this.description = description;
         this.quantity = quantity;
         this.price = price;
+        this.category = ProductCategory.SHOES; // Default to SHOES for backward compatibility
+    }
+
+    // New constructor that accepts category parameter
+    public Product(String name, int quantity, double price, String description, String storeName, ProductCategory category) {
+        this.name = name;
+        this.storeName = storeName;
+        this.description = description;
+        this.quantity = quantity;
+        this.price = price;
+        this.category = category;
     }
 
     @Override
     public boolean equals(Object o) {
-        if (o instanceof Shoe) {
-            return (((Shoe) o).getName().equals(this.name) && ((Shoe) o).getQuantity() == this.quantity && ((Shoe) o).getPrice()
-                    == this.price && ((Shoe) o).getDescription().equals(this.description)
-                    && ((Shoe) o).getStore().equals(this.storeName));
+        if (o instanceof Product) {
+            return (((Product) o).getName().equals(this.name) && ((Product) o).getQuantity() == this.quantity && ((Product) o).getPrice()
+                    == this.price && ((Product) o).getDescription().equals(this.description)
+                    && ((Product) o).getStore().equals(this.storeName));
         }
         return false;
     }
@@ -36,9 +51,6 @@ public class Shoe {
         review.add(input + ": " + rev);
     }
 
-    private int quantity;
-    private double price;
-
     public String getName() {
         return name;
     }
@@ -54,7 +66,6 @@ public class Shoe {
     public void setStoreName(String storeName) {
         this.storeName = storeName;
     }
-
 
     public String getDescription() {
         return description;
@@ -80,9 +91,16 @@ public class Shoe {
         this.price = price;
     }
 
-    @Override
-    public String toString(){
-        return String.format("%s,%d,%.2f,%s,%s", this.name, this.quantity, this.price, this.description, this.storeName);
+    public ProductCategory getCategory() {
+        return category;
     }
 
+    public void setCategory(ProductCategory category) {
+        this.category = category;
+    }
+
+    @Override
+    public String toString(){
+        return String.format("%s,%d,%.2f,%s,%s,%s", this.name, this.quantity, this.price, this.description, this.storeName, this.category.name());
+    }
 }

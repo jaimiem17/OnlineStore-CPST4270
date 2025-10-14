@@ -22,72 +22,85 @@ public class Marketplace {
         if (f.exists()) {
             try (BufferedReader bfr = new BufferedReader(new FileReader(f))) {
                 String line = "";
-                ArrayList<String> sellerInfo = new ArrayList<>();
-                Seller seller = new Seller("");
+                ArrayList<String> allLines = new ArrayList<>();
+                boolean needsMigration = false;
+                
+                // First pass: read all lines and check if migration is needed
                 while ((line = bfr.readLine()) != null) {
-
-                    String[] arr = line.split(",");
-                    if (arr.length > 2) {
-                        String s = arr[0].replaceAll(",", "");
-                        boolean no = false;
-                        int index = sellers.size();
-                        for (int i = 0; i < sellers.size(); i++) {
-                            if (s.equals(sellers.get(i).getEmail())) {
-                                no = true;
-                                index = i;
-                            }
-                        }
-
-                        if (!no) {
-                            seller = new Seller(s);
-                            sellers.add(seller);
-                        }
-                        String so = arr[1].replaceAll(",", "");
-                        Store store = new Store(so);
-                        Shoe shoe = null;
-                        for (int i = 2; i < arr.length; i += 5) {
-                            shoe = new Shoe(arr[i], Integer.parseInt(arr[i + 1]),
-                                    Double.parseDouble(arr[i + 2]), arr[i + 3], arr[i + 4]);
-                            store.addProduct(shoe);
-
-                        }
-                        seller.addStores(store);
-                        sellers.set(index, seller);
-                    } else if (arr.length == 2) {
-
-                        String s = arr[0].replaceAll(",", "");
-                        boolean no = false;
-                        int index = sellers.size();
-                        for (int i = 0; i < sellers.size(); i++) {
-                            if (s.equals(sellers.get(i).getEmail())) {
-                                no = true;
-                                index = i;
-                            }
-                        }
-
-
-                        if (!no) {
-                            seller = new Seller(s);
-                            sellers.add(seller);
-                        }
-
-                        String so = arr[1].replaceAll(",", "");
-                        Store store = new Store(so);
-                        seller.addStores(store);
-
-
-                        sellers.set(index, seller);
-                    } else if (!line.isEmpty()) {
-                        String s = arr[0].replaceAll(",", "");
-                        seller = new Seller(s);
-                        sellers.add(seller);
+                    allLines.add(line);
+                    if (!line.trim().isEmpty() && DataMigrationService.isLegacyFormat(line)) {
+                        needsMigration = true;
                     }
                 }
-
-
+                
+                // If migration is needed, convert legacy data to new format
+                if (needsMigration) {
+                    System.out.println("Migrating existing shoe data to new product format...");
+                    try {
+                        migrateDataFile(allLines);
+                    } catch (Exception e) {
+                        System.out.println("Warning: Some data migration issues occurred: " + e.getMessage());
+                        System.out.println("Continuing with available data...");
+                    }
+                }
+                
+                // Process all lines (now in new format)
+                for (String currentLine : allLines) {
+                    if (currentLine.trim().isEmpty()) {
+                        continue;
+                    }
+                    
+                    String[] arr = currentLine.split(",");
+                    
+                    if (arr.length > 2) {
+                        // Line contains product data
+                        String sellerEmail = arr[0].replaceAll(",", "");
+                        String storeName = arr[1].replaceAll(",", "");
+                        
+                        // Find or create seller
+                        Seller seller = findOrCreateSeller(sellerEmail);
+                        
+                        // Create store
+                        Store store = new Store(storeName);
+                        
+                        // Parse products using migration service
+                        try {
+                            ArrayList<Product> products = DataMigrationService.parseProductsFromLine(currentLine);
+                            for (Product product : products) {
+                                store.addProduct(product);
+                            }
+                        } catch (Exception e) {
+                            System.out.println("Warning: Could not parse products from line: " + currentLine);
+                            System.out.println("Error: " + e.getMessage());
+                            // Continue processing other lines
+                        }
+                        
+                        seller.addStores(store);
+                        
+                    } else if (arr.length == 2) {
+                        // Line contains only seller and store info (no products)
+                        String sellerEmail = arr[0].replaceAll(",", "");
+                        String storeName = arr[1].replaceAll(",", "");
+                        
+                        // Find or create seller
+                        Seller seller = findOrCreateSeller(sellerEmail);
+                        
+                        // Create empty store
+                        Store store = new Store(storeName);
+                        seller.addStores(store);
+                        
+                    } else if (arr.length == 1 && !currentLine.trim().isEmpty()) {
+                        // Line contains only seller info
+                        String sellerEmail = arr[0].replaceAll(",", "");
+                        findOrCreateSeller(sellerEmail);
+                    }
+                }
+                
+                // Add empty seller at the end (maintaining original behavior)
                 sellers.add(new Seller(""));
+                
             } catch (IOException e) {
-                System.out.println("Error reading to the sellers file.");
+                System.out.println("Error reading the sellers file: " + e.getMessage());
             }
         } else {
             try {
@@ -96,7 +109,58 @@ public class Marketplace {
                 System.out.println("There was an error creating the sellers file.");
             }
         }
-
+    }
+    
+    /**
+     * Helper method to find an existing seller or create a new one.
+     * @param email The seller's email
+     * @return The existing or newly created Seller object
+     */
+    private static Seller findOrCreateSeller(String email) {
+        for (int i = 0; i < sellers.size(); i++) {
+            if (email.equals(sellers.get(i).getEmail())) {
+                return sellers.get(i);
+            }
+        }
+        
+        // Seller not found, create new one
+        Seller newSeller = new Seller(email);
+        sellers.add(newSeller);
+        return newSeller;
+    }
+    
+    /**
+     * Migrates the data file from legacy format to new format.
+     * @param lines All lines from the original file
+     */
+    private static void migrateDataFile(ArrayList<String> lines) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter("Sellers.txt"))) {
+            int migratedLines = 0;
+            for (int i = 0; i < lines.size(); i++) {
+                String line = lines.get(i);
+                if (line.trim().isEmpty()) {
+                    writer.write(line);
+                } else {
+                    try {
+                        String convertedLine = DataMigrationService.convertLegacyLineToNewFormat(line);
+                        writer.write(convertedLine);
+                        // Update the line in memory for processing
+                        lines.set(i, convertedLine);
+                        migratedLines++;
+                    } catch (Exception e) {
+                        System.out.println("Warning: Could not migrate line: " + line);
+                        System.out.println("Error: " + e.getMessage());
+                        // Keep original line if migration fails
+                        writer.write(line);
+                    }
+                }
+                writer.newLine();
+            }
+            System.out.println("Data migration completed successfully. Migrated " + migratedLines + " lines.");
+        } catch (IOException e) {
+            System.out.println("Error during data migration: " + e.getMessage());
+            throw new RuntimeException("Failed to migrate data file", e);
+        }
     }
 
 
@@ -296,7 +360,7 @@ public class Marketplace {
                 // ____________
                 System.out.println("Menu");
                 System.out.println("1: Add a store");
-                System.out.println("2: Add a product one of your Stores");
+                System.out.println("2: Add a product to one of your Stores");
                 System.out.println("3: Remove a product from one of your Stores");
                 System.out.println("4: Edit a product from one of your Stores");
                 System.out.println("5: View your stores and their details");
@@ -311,58 +375,87 @@ public class Marketplace {
                         sellers.get(index).writeToSellerFileAddStore(storeName);
                         break;
                     case 2:
-                        System.out.println("What is the name of the store you would like to add a shoe to?");
+                        System.out.println("What is the name of the store you would like to add a product to?");
                         storeName = scanner.nextLine();
                         if (sellers.get(index).checkIfStoreExists(storeName)) {
-                            System.out.println("What is the name of your shoe?");
-                            String shoeName = scanner.nextLine();
-                            System.out.println("How many shoes do you want to manufacture?");
+                            System.out.println("What is the name of your product?");
+                            String productName = scanner.nextLine();
+                            System.out.println("How many products do you want to manufacture?");
                             int quantity = scanner.nextInt();
                             scanner.nextLine();
-                            System.out.println("What will the price of your shoe be?");
+                            System.out.println("What will the price of your product be?");
                             double price = scanner.nextDouble();
                             scanner.nextLine();
-                            System.out.println("What is the description of your shoe?");
+                            System.out.println("What is the description of your product?");
                             String description = scanner.nextLine();
-                            sellers.get(index).writeToSellerFileAddProduct(storeName, shoeName, quantity, price, description);
+                            
+                            // Category selection
+                            System.out.println("Please select a category for your product:");
+                            System.out.println("1. Shoes");
+                            System.out.println("2. Clothing");
+                            System.out.println("3. Accessories");
+                            System.out.println("4. Electronics");
+                            System.out.println("5. Home & Garden");
+                            System.out.println("6. Sports & Outdoors");
+                            System.out.println("7. Books & Media");
+                            
+                            int categoryChoice = 0;
+                            boolean validCategory = false;
+                            while (!validCategory) {
+                                try {
+                                    categoryChoice = scanner.nextInt();
+                                    scanner.nextLine();
+                                    if (categoryChoice >= 1 && categoryChoice <= 7) {
+                                        validCategory = true;
+                                    } else {
+                                        System.out.println("Please enter a number between 1 and 7.");
+                                    }
+                                } catch (Exception e) {
+                                    System.out.println("Please enter a valid number between 1 and 7.");
+                                    scanner.nextLine(); // Clear invalid input
+                                }
+                            }
+                            
+                            ProductCategory category = ProductCategory.values()[categoryChoice - 1];
+                            sellers.get(index).writeToSellerFileAddProduct(storeName, productName, quantity, price, description, category);
                         } else {
                             System.out.println("Sorry, you are not affiliated with " + storeName);
                         }
                         break;
                     case 3:
-                        System.out.println("What is the name of the store you would to remove a shoe from?");
+                        System.out.println("What is the name of the store you would to remove a product from?");
                         storeName = scanner.nextLine();
                         if (sellers.get(index).checkIfStoreExists(storeName)) {
-                            System.out.println("What was the name of the shoe?");
-                            String shoeName = scanner.nextLine();
-                            System.out.println("How many of these shoes were manufactured (quantity).");
+                            System.out.println("What was the name of the product?");
+                            String productName = scanner.nextLine();
+                            System.out.println("How many of these products were manufactured (quantity).");
                             int quantity = scanner.nextInt();
                             scanner.nextLine();
-                            System.out.println("What was the price of your shoe?");
+                            System.out.println("What was the price of your product?");
                             double price = scanner.nextDouble();
                             scanner.nextLine();
-                            System.out.println("What was the description of your shoe?");
+                            System.out.println("What was the description of your product?");
                             String description = scanner.nextLine();
-                            sellers.get(index).writeToSellerFileRemoveProduct(storeName, shoeName, quantity, price, description);
+                            sellers.get(index).writeToSellerFileRemoveProduct(storeName, productName, quantity, price, description);
                         }
                         break;
                     case 4:
-                        System.out.println("What is the name of the store you would like to edit a shoe from?");
+                        System.out.println("What is the name of the store you would like to edit a product from?");
                         storeName = scanner.nextLine();
                         if (sellers.get(index).checkIfStoreExists(storeName)) {
-                            System.out.println("What is the name of your old shoe?");
-                            String shoeName = scanner.nextLine();
-                            System.out.println("What was the quantity of the old shoes");
+                            System.out.println("What is the name of your old product?");
+                            String productName = scanner.nextLine();
+                            System.out.println("What was the quantity of the old product");
                             int quantity = scanner.nextInt();
                             scanner.nextLine();
-                            System.out.println("What was the price of the old shoe");
+                            System.out.println("What was the price of the old product");
                             double price = scanner.nextDouble();
                             scanner.nextLine();
-                            System.out.println("What is the description of the old shoe");
+                            System.out.println("What is the description of the old product");
                             String description = scanner.nextLine();
 
-                            System.out.println("What do you want the new name of the shoe to be?");
-                            String newShoeName = scanner.nextLine();
+                            System.out.println("What do you want the new name of the product to be?");
+                            String newProductName = scanner.nextLine();
                             System.out.println("What is the new quantity?");
                             int newQuantity = scanner.nextInt();
                             scanner.nextLine();
@@ -371,8 +464,39 @@ public class Marketplace {
                             scanner.nextLine();
                             System.out.println("What is the new description?");
                             String newDescription = scanner.nextLine();
-                            sellers.get(index).writerToSellerFileEditProduct(shoeName, quantity, price, description, storeName,
-                                    newShoeName, newQuantity, newPrice, newDescription);
+                            
+                            // Category selection for new product
+                            System.out.println("Please select a new category for your product:");
+                            System.out.println("1. Shoes");
+                            System.out.println("2. Clothing");
+                            System.out.println("3. Accessories");
+                            System.out.println("4. Electronics");
+                            System.out.println("5. Home & Garden");
+                            System.out.println("6. Sports & Outdoors");
+                            System.out.println("7. Books & Media");
+                            
+                            int categoryChoice = 0;
+                            boolean validCategory = false;
+                            while (!validCategory) {
+                                try {
+                                    categoryChoice = scanner.nextInt();
+                                    scanner.nextLine();
+                                    if (categoryChoice >= 1 && categoryChoice <= 7) {
+                                        validCategory = true;
+                                    } else {
+                                        System.out.println("Please enter a number between 1 and 7.");
+                                    }
+                                } catch (Exception e) {
+                                    System.out.println("Please enter a valid number between 1 and 7.");
+                                    scanner.nextLine(); // Clear invalid input
+                                }
+                            }
+                            
+                            ProductCategory newCategory = ProductCategory.values()[categoryChoice - 1];
+                            // For editing, we assume the old product was SHOES category (backward compatibility)
+                            ProductCategory oldCategory = ProductCategory.SHOES;
+                            sellers.get(index).writerToSellerFileEditProduct(productName, quantity, price, description, oldCategory, storeName,
+                                    newProductName, newQuantity, newPrice, newDescription, newCategory);
                         }
                         break;
                     case 5:
@@ -408,141 +532,285 @@ public class Marketplace {
                 scanner.nextLine();
                 switch (choice3) {
                     case 1:
-                        System.out.println("On what basis would you like ro search by?");
+                        System.out.println("On what basis would you like to search by?");
                         System.out.println("1. NAME");
                         System.out.println("2. PRICE");
                         System.out.println("3. STORE");
                         System.out.println("4. DESCRIPTION");
                         System.out.println("5. QUANTITY");
-                        System.out.println("6. NO FILTERS, VIEW ENTIRE MARKETPLACE");
+                        System.out.println("6. CATEGORY");
+                        System.out.println("7. NO FILTERS, VIEW ENTIRE MARKETPLACE");
                         int choice4 = scanner.nextInt();
                         scanner.nextLine();
                         switch (choice4) {
                             case 1:
                                 System.out.println("What is the name of the product you wish to search by:");
                                 String searchName = scanner.nextLine();
+                                
+                                // Ask if they want to filter by category
+                                System.out.println("Would you like to filter by category? (y/n)");
+                                String filterByCategory = scanner.nextLine();
+                                ProductCategory selectedCategory = null;
+                                
+                                if (filterByCategory.equalsIgnoreCase("y") || filterByCategory.equalsIgnoreCase("yes")) {
+                                    System.out.println("Please select a category:");
+                                    System.out.println("1. Shoes");
+                                    System.out.println("2. Clothing");
+                                    System.out.println("3. Accessories");
+                                    System.out.println("4. Electronics");
+                                    System.out.println("5. Home & Garden");
+                                    System.out.println("6. Sports & Outdoors");
+                                    System.out.println("7. Books & Media");
+                                    
+                                    int categoryChoice = scanner.nextInt();
+                                    scanner.nextLine();
+                                    if (categoryChoice >= 1 && categoryChoice <= 7) {
+                                        selectedCategory = ProductCategory.values()[categoryChoice - 1];
+                                    }
+                                }
+                                
                                 try {
-                                    BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"));
-                                    ArrayList<String> searchByName = new ArrayList<>();
-                                    String line = "";
-                                    while ((line = bfr.readLine()) != null) {
-                                        String[] arr = line.split(",");
-                                        if (searchName.equalsIgnoreCase(arr[2])) {
-                                            searchByName.add(line);
+                                    ArrayList<Product> searchResults = ProductSearchService.searchByNameAsProducts(searchName);
+                                    if (selectedCategory != null) {
+                                        searchResults = ProductSearchService.filterByCategory(searchResults, selectedCategory);
+                                    }
+                                    
+                                    if (searchResults.isEmpty()) {
+                                        System.out.println("No products found matching your criteria.");
+                                    } else {
+                                        System.out.println("Search Results:");
+                                        for (Product product : searchResults) {
+                                            System.out.println(product.toString());
                                         }
                                     }
-                                    for (int i = 0; i < searchByName.size(); i++) {
-                                        System.out.println(searchByName.get(i));
-                                    }
-
-                                } catch (IOException io) {
-                                    System.out.println();
+                                } catch (Exception e) {
+                                    System.out.println("Error searching products: " + e.getMessage());
                                 }
                                 break;
                             case 2:
                                 System.out.println("What is the threshold price of your search?");
                                 double searchPrice = scanner.nextDouble();
                                 scanner.nextLine();
+                                
+                                // Ask if they want to filter by category
+                                System.out.println("Would you like to filter by category? (y/n)");
+                                String filterByCategory2 = scanner.nextLine();
+                                ProductCategory selectedCategory2 = null;
+                                
+                                if (filterByCategory2.equalsIgnoreCase("y") || filterByCategory2.equalsIgnoreCase("yes")) {
+                                    System.out.println("Please select a category:");
+                                    System.out.println("1. Shoes");
+                                    System.out.println("2. Clothing");
+                                    System.out.println("3. Accessories");
+                                    System.out.println("4. Electronics");
+                                    System.out.println("5. Home & Garden");
+                                    System.out.println("6. Sports & Outdoors");
+                                    System.out.println("7. Books & Media");
+                                    
+                                    int categoryChoice2 = scanner.nextInt();
+                                    scanner.nextLine();
+                                    if (categoryChoice2 >= 1 && categoryChoice2 <= 7) {
+                                        selectedCategory2 = ProductCategory.values()[categoryChoice2 - 1];
+                                    }
+                                }
+                                
                                 try {
-                                    BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"));
-                                    ArrayList<String> searchByPrice = new ArrayList<>();
-                                    String line = "";
-                                    while ((line = bfr.readLine()) != null) {
-                                        String[] arr = line.split(",");
-                                        if (searchPrice == Double.parseDouble(arr[3])) {
-                                            searchByPrice.add(line);
+                                    ArrayList<Product> searchResults = ProductSearchService.searchByPriceAsProducts(searchPrice);
+                                    if (selectedCategory2 != null) {
+                                        searchResults = ProductSearchService.filterByCategory(searchResults, selectedCategory2);
+                                    }
+                                    
+                                    if (searchResults.isEmpty()) {
+                                        System.out.println("No products found matching your criteria.");
+                                    } else {
+                                        System.out.println("Search Results:");
+                                        for (Product product : searchResults) {
+                                            System.out.println(product.toString());
                                         }
                                     }
-                                    for (int i = 0; i < searchByPrice.size(); i++) {
-                                        System.out.println(searchByPrice.get(i));
-                                    }
-
-                                } catch (IOException io) {
-                                    System.out.println();
+                                } catch (Exception e) {
+                                    System.out.println("Error searching products: " + e.getMessage());
                                 }
-
                                 break;
                             case 3:
                                 System.out.println("What is the name of the store you would like to search in?");
                                 String searchStore = scanner.nextLine();
+                                
+                                // Ask if they want to filter by category
+                                System.out.println("Would you like to filter by category? (y/n)");
+                                String filterByCategory3 = scanner.nextLine();
+                                ProductCategory selectedCategory3 = null;
+                                
+                                if (filterByCategory3.equalsIgnoreCase("y") || filterByCategory3.equalsIgnoreCase("yes")) {
+                                    System.out.println("Please select a category:");
+                                    System.out.println("1. Shoes");
+                                    System.out.println("2. Clothing");
+                                    System.out.println("3. Accessories");
+                                    System.out.println("4. Electronics");
+                                    System.out.println("5. Home & Garden");
+                                    System.out.println("6. Sports & Outdoors");
+                                    System.out.println("7. Books & Media");
+                                    
+                                    int categoryChoice3 = scanner.nextInt();
+                                    scanner.nextLine();
+                                    if (categoryChoice3 >= 1 && categoryChoice3 <= 7) {
+                                        selectedCategory3 = ProductCategory.values()[categoryChoice3 - 1];
+                                    }
+                                }
+                                
                                 try {
-                                    BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"));
-                                    ArrayList<String> searchByStore = new ArrayList<>();
-                                    String line = "";
-                                    while ((line = bfr.readLine()) != null) {
-                                        String[] arr = line.split(",");
-                                        if (searchStore.equalsIgnoreCase(arr[1])) {
-                                            searchByStore.add(line);
+                                    ArrayList<Product> searchResults = ProductSearchService.searchByStoreAsProducts(searchStore);
+                                    if (selectedCategory3 != null) {
+                                        searchResults = ProductSearchService.filterByCategory(searchResults, selectedCategory3);
+                                    }
+                                    
+                                    if (searchResults.isEmpty()) {
+                                        System.out.println("No products found matching your criteria.");
+                                    } else {
+                                        System.out.println("Search Results:");
+                                        for (Product product : searchResults) {
+                                            System.out.println(product.toString());
                                         }
                                     }
-                                    for (int i = 0; i < searchByStore.size(); i++) {
-                                        System.out.println(searchByStore.get(i));
-                                    }
-
-                                } catch (IOException io) {
-                                    System.out.println();
+                                } catch (Exception e) {
+                                    System.out.println("Error searching products: " + e.getMessage());
                                 }
                                 break;
                             case 4:
-                                System.out.println("What is the description of shoe you wish to purchase?");
+                                System.out.println("What is the description of product you wish to purchase?");
                                 String searchDescription = scanner.nextLine();
+                                
+                                // Ask if they want to filter by category
+                                System.out.println("Would you like to filter by category? (y/n)");
+                                String filterByCategory4 = scanner.nextLine();
+                                ProductCategory selectedCategory4 = null;
+                                
+                                if (filterByCategory4.equalsIgnoreCase("y") || filterByCategory4.equalsIgnoreCase("yes")) {
+                                    System.out.println("Please select a category:");
+                                    System.out.println("1. Shoes");
+                                    System.out.println("2. Clothing");
+                                    System.out.println("3. Accessories");
+                                    System.out.println("4. Electronics");
+                                    System.out.println("5. Home & Garden");
+                                    System.out.println("6. Sports & Outdoors");
+                                    System.out.println("7. Books & Media");
+                                    
+                                    int categoryChoice4 = scanner.nextInt();
+                                    scanner.nextLine();
+                                    if (categoryChoice4 >= 1 && categoryChoice4 <= 7) {
+                                        selectedCategory4 = ProductCategory.values()[categoryChoice4 - 1];
+                                    }
+                                }
+                                
                                 try {
-                                    BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"));
-                                    ArrayList<String> searchByDesc = new ArrayList<>();
-                                    String line = "";
-                                    while ((line = bfr.readLine()) != null) {
-                                        String[] arr = line.split(",");
-                                        if (searchDescription.equalsIgnoreCase(arr[5])) {
-                                            searchByDesc.add(line);
+                                    ArrayList<Product> searchResults = ProductSearchService.searchByDescriptionAsProducts(searchDescription);
+                                    if (selectedCategory4 != null) {
+                                        searchResults = ProductSearchService.filterByCategory(searchResults, selectedCategory4);
+                                    }
+                                    
+                                    if (searchResults.isEmpty()) {
+                                        System.out.println("No products found matching your criteria.");
+                                    } else {
+                                        System.out.println("Search Results:");
+                                        for (Product product : searchResults) {
+                                            System.out.println(product.toString());
                                         }
                                     }
-                                    for (int i = 0; i < searchByDesc.size(); i++) {
-                                        System.out.println(searchByDesc.get(i));
-                                    }
-
-                                } catch (IOException io) {
-                                    System.out.println();
+                                } catch (Exception e) {
+                                    System.out.println("Error searching products: " + e.getMessage());
                                 }
                                 break;
                             case 5:
                                 System.out.println("Displaying all the in-stock products:");
+                                
+                                // Ask if they want to filter by category
+                                System.out.println("Would you like to filter by category? (y/n)");
+                                String filterByCategory5 = scanner.nextLine();
+                                ProductCategory selectedCategory5 = null;
+                                
+                                if (filterByCategory5.equalsIgnoreCase("y") || filterByCategory5.equalsIgnoreCase("yes")) {
+                                    System.out.println("Please select a category:");
+                                    System.out.println("1. Shoes");
+                                    System.out.println("2. Clothing");
+                                    System.out.println("3. Accessories");
+                                    System.out.println("4. Electronics");
+                                    System.out.println("5. Home & Garden");
+                                    System.out.println("6. Sports & Outdoors");
+                                    System.out.println("7. Books & Media");
+                                    
+                                    int categoryChoice5 = scanner.nextInt();
+                                    scanner.nextLine();
+                                    if (categoryChoice5 >= 1 && categoryChoice5 <= 7) {
+                                        selectedCategory5 = ProductCategory.values()[categoryChoice5 - 1];
+                                    }
+                                }
+                                
                                 try {
-                                    BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"));
-                                    ArrayList<String> searchByQuantity = new ArrayList<>();
-                                    String line = "";
-                                    while ((line = bfr.readLine()) != null) {
-                                        String[] arr = line.split(",");
-                                        if (Integer.parseInt(arr[4]) != 0) {
-                                            searchByQuantity.add(line);
+                                    ArrayList<Product> searchResults = ProductSearchService.searchInStock();
+                                    if (selectedCategory5 != null) {
+                                        searchResults = ProductSearchService.filterByCategory(searchResults, selectedCategory5);
+                                    }
+                                    
+                                    if (searchResults.isEmpty()) {
+                                        System.out.println("No in-stock products found matching your criteria.");
+                                    } else {
+                                        System.out.println("In-Stock Products:");
+                                        for (Product product : searchResults) {
+                                            System.out.println(product.toString());
                                         }
                                     }
-                                    for (int i = 0; i < searchByQuantity.size(); i++) {
-                                        System.out.println(searchByQuantity.get(i));
-                                    }
-
-                                } catch (IOException io) {
-                                    System.out.println();
+                                } catch (Exception e) {
+                                    System.out.println("Error searching products: " + e.getMessage());
                                 }
                                 break;
                             case 6:
+                                System.out.println("Please select a category to browse:");
+                                System.out.println("1. Shoes");
+                                System.out.println("2. Clothing");
+                                System.out.println("3. Accessories");
+                                System.out.println("4. Electronics");
+                                System.out.println("5. Home & Garden");
+                                System.out.println("6. Sports & Outdoors");
+                                System.out.println("7. Books & Media");
+                                
+                                int categoryChoice6 = scanner.nextInt();
+                                scanner.nextLine();
+                                
+                                if (categoryChoice6 >= 1 && categoryChoice6 <= 7) {
+                                    ProductCategory browseCat = ProductCategory.values()[categoryChoice6 - 1];
+                                    try {
+                                        ArrayList<Product> categoryResults = ProductSearchService.searchByCategoryAsProducts(browseCat);
+                                        
+                                        if (categoryResults.isEmpty()) {
+                                            System.out.println("No products found in the " + browseCat.getDisplayName() + " category.");
+                                        } else {
+                                            System.out.println("Products in " + browseCat.getDisplayName() + " category:");
+                                            for (Product product : categoryResults) {
+                                                System.out.println(product.toString());
+                                            }
+                                        }
+                                    } catch (Exception e) {
+                                        System.out.println("Error searching by category: " + e.getMessage());
+                                    }
+                                } else {
+                                    System.out.println("Invalid category selection.");
+                                }
+                                break;
+                            case 7:
                                 System.out.println("Displaying the entire marketplace:");
                                 try {
-                                    BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"));
-                                    ArrayList<String> market = new ArrayList<>();
-                                    String line = "";
-                                    while ((line = bfr.readLine()) != null) {
-                                        market.add(line);
-                                    }
-                                    try {
-                                        for (int i = 0; i < market.size(); i++) {
-                                            System.out.println("Store " + (i + 1) + " " + market.get(i).split(",")[1]);
+                                    ArrayList<Product> allProducts = ProductSearchService.getAllProducts();
+                                    
+                                    if (allProducts.isEmpty()) {
+                                        System.out.println("No products available in the marketplace.");
+                                    } else {
+                                        System.out.println("All Products in Marketplace:");
+                                        for (Product product : allProducts) {
+                                            System.out.println(product.toString());
                                         }
-                                    } catch (ArrayIndexOutOfBoundsException exception) {
-                                        System.out.print("");
                                     }
-                                } catch (IOException io) {
-                                    System.out.println();
-                                    break;
+                                } catch (Exception e) {
+                                    System.out.println("Error displaying marketplace: " + e.getMessage());
                                 }
                                 break;
                             default:
@@ -574,11 +842,11 @@ public class Marketplace {
                                             cart.add(line);
                                         }
                                     }
-                                    ArrayList<Shoe> passCart = new ArrayList<>();
+                                    ArrayList<Product> passCart = new ArrayList<>();
                                     for (int i = 0; i < cart.size(); i++) {
                                         String[] temp = cart.get(i).split(",");
-                                        Shoe shoe = new Shoe(temp[0], Integer.parseInt(temp[1]), Double.parseDouble(temp[2]), temp[3], temp[4]);
-                                        passCart.add(shoe);
+                                        Product product = new Product(temp[0], Integer.parseInt(temp[1]), Double.parseDouble(temp[2]), temp[3], temp[4]);
+                                        passCart.add(product);
                                     }
                                     for (int i = 0; i < passCart.size(); i++) {
                                         for (int j = 0; j < sellers.size(); j++) {
@@ -615,7 +883,8 @@ public class Marketplace {
                                     for (int j = 0; j < sellers.get(i).getStores().size(); j++) {
                                         for (int k = 0; k < sellers.get(i).getStores().get(i).getProducts().size(); k++) {
                                             if (sellers.get(i).getStores().get(i).getProducts().get(k).getName().equals(item)) {
-                                                customer.addToCart(sellers.get(i).getStores().get(i).getProducts().get(k));
+                                                Product product = sellers.get(i).getStores().get(i).getProducts().get(k);
+                                                customer.addToCart(product);
                                             }
                                         }
                                     }
