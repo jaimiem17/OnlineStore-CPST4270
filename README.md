@@ -1,4 +1,4 @@
-# Happy Feet Marketplace
+# Happy Feet Marketplace -> Online Store App Dev
 
 A console-based Java marketplace application that allows customers to browse and purchase products while enabling sellers to manage their stores and inventory.
 
