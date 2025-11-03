@@ -42,9 +42,9 @@ public class Login {
                         }
                         Store store = new Store(arr[1]);
                         for (int i = 2; i < arr.length; i += 5) {
-                            Shoe shoe = new Shoe(arr[i], Integer.parseInt(arr[i + 1]),
+                            Product product = new Product(arr[i], Integer.parseInt(arr[i + 1]),
                                     Double.parseDouble(arr[i + 2]), arr[i + 3], arr[i + 4]);
-                            store.addProduct(shoe);
+                            store.addProduct(product);
                         }
                         seller.addStores(store.getName());
                         sellers.set(index, seller);
@@ -280,75 +280,76 @@ public class Login {
                         System.out.println("What is the name of the store you would like to add?");
                         storeName = scanner.nextLine();
                         sellers.get(index).addStores(storeName);
-                        sellers.get(index).writeToSellerFile();
+                        sellers.get(index).writeToSellerFileAddStore(storeName);
                         break;
                     case 2:
-                        System.out.println("What is the name of the store you would like to add a shoe to?");
+                        System.out.println("What is the name of the store you would like to add a product to?");
                         storeName = scanner.nextLine();
                         if (sellers.get(index).checkIfStoreExists(storeName)) {
-                            System.out.println("What is the name of your shoe?");
-                            String shoeName = scanner.nextLine();
-                            System.out.println("How many shoes do you want to manufacture?");
+                            System.out.println("What is the name of your product?");
+                            String productName = scanner.nextLine();
+                            System.out.println("How many products do you want to manufacture?");
                             int quantity = scanner.nextInt();
                             scanner.nextLine();
-                            System.out.println("What will the price of your shoe be?");
+                            System.out.println("What will the price of your product be?");
                             double price = scanner.nextDouble();
                             scanner.nextLine();
-                            System.out.println("What is the description of your shoe?");
+                            System.out.println("What is the description of your product?");
                             String description = scanner.nextLine();
-                            sellers.get(index).createProduct(storeName, shoeName, quantity, price, description);
-                            sellers.get(index).writeToSellerFile();
+                            sellers.get(index).createProduct(storeName, productName, quantity, price, description);
+                            sellers.get(index).writeToSellerFileAddProduct(storeName, productName, quantity, price, description);
                         } else {
                             System.out.println("Sorry, you are not affiliated with " + storeName);
                         }
                         break;
                     case 3:
-                        System.out.println("What is the name of the store you would to remove a shoe from?");
+                        System.out.println("What is the name of the store you would to remove a product from?");
                         storeName = scanner.nextLine();
                         if (sellers.get(index).checkIfStoreExists(storeName)) {
-                            System.out.println("What is the name of your shoe?");
-                            String shoeName = scanner.nextLine();
-                            System.out.println("How many shoes do you want to manufacture?");
+                            System.out.println("What is the name of your product?");
+                            String productName = scanner.nextLine();
+                            System.out.println("How many products do you want to manufacture?");
                             int quantity = scanner.nextInt();
                             scanner.nextLine();
-                            System.out.println("What will the price of your shoe be?");
+                            System.out.println("What will the price of your product be?");
                             double price = scanner.nextDouble();
                             scanner.nextLine();
-                            System.out.println("What is the description of your shoe?");
+                            System.out.println("What is the description of your product?");
                             String description = scanner.nextLine();
-                            Shoe shoe = new Shoe(shoeName, quantity, price, description, storeName);
-                            sellers.get(index).removeProduct(storeName, shoe);
-                            sellers.get(index).writeToSellerFile();
+                            Product product = new Product(productName, quantity, price, description, storeName);
+                            sellers.get(index).removeProduct(storeName, product);
+                            sellers.get(index).writeToSellerFileRemoveProduct(storeName, productName, quantity, price, description);
                         }
                         break;
                     case 4:
-                        System.out.println("What is the name of the store you would like to edit a shoe from?");
+                        System.out.println("What is the name of the store you would like to edit a product from?");
                         storeName = scanner.nextLine();
                         if (sellers.get(index).checkIfStoreExists(storeName)) {
-                            System.out.println("What is the name of your old shoe?");
-                            String shoeName = scanner.nextLine();
-                            System.out.println("What was the quantity of the old shoes");
+                            System.out.println("What is the name of your old product?");
+                            String productName = scanner.nextLine();
+                            System.out.println("What was the quantity of the old products");
                             int quantity = scanner.nextInt();
                             scanner.nextLine();
-                            System.out.println("What was the price of the old shoe");
+                            System.out.println("What was the price of the old product");
                             double price = scanner.nextDouble();
                             scanner.nextLine();
-                            System.out.println("What is the description of the old shoe");
+                            System.out.println("What is the description of the old product");
                             String description = scanner.nextLine();
-                            Shoe oldShoe = new Shoe(shoeName, quantity, price, description, storeName);
+                            Product oldProduct = new Product(productName, quantity, price, description, storeName);
 
-                            System.out.println("What is the name of your old shoe?");
-                            String newShoeName = scanner.nextLine();
-                            System.out.println("What was the quantity of the old shoes");
+                            System.out.println("What is the name of your new product?");
+                            String newProductName = scanner.nextLine();
+                            System.out.println("What is the quantity of the new products");
                             int newQuantity = scanner.nextInt();
                             scanner.nextLine();
-                            System.out.println("What was the price of the old shoe");
+                            System.out.println("What is the price of the new product");
                             double newPrice = scanner.nextDouble();
                             scanner.nextLine();
-                            System.out.println("What is the description of the old shoe");
+                            System.out.println("What is the description of the new product");
                             String newDescription = scanner.nextLine();
-                            sellers.get(index).editProduct(oldShoe, newShoeName, newDescription, storeName, newQuantity, newPrice);
-                            sellers.get(index).writeToSellerFile();
+                            sellers.get(index).editProduct(oldProduct, newProductName, newDescription, storeName, newQuantity, newPrice);
+                            sellers.get(index).writerToSellerFileEditProduct(productName, quantity, price, description, storeName,
+                                    newProductName, newQuantity, newPrice, newDescription);
                         }
                         break;
                     case 5:
@@ -458,7 +459,7 @@ public class Login {
                         }
                             break;
                         case 4:
-                            System.out.println("What is the description of shoe you wish to purchase?");
+                            System.out.println("What is the description of product you wish to purchase?");
                             String searchDescription = scanner.nextLine();
                             try {
                                 BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"));
@@ -513,6 +514,7 @@ public class Login {
 
                             } catch (IOException io) {
                                 System.out.println();
+                            }
                             break;
                         default:
                             System.out.println("Please enter a valid choice!");
@@ -543,11 +545,11 @@ public class Login {
                                         cart.add(line);
                                     }
                                 }
-                                ArrayList<Shoe> passCart = new ArrayList<>();
+                                ArrayList<Product> passCart = new ArrayList<>();
                                 for (int i = 0; i < cart.size(); i++) {
                                     String[] temp = cart.get(i).split(",");
-                                    Shoe shoe = new Shoe(temp[0], Integer.parseInt(temp[1]), Double.parseDouble(temp[2]), temp[3], temp[4]);
-                                    passCart.add(shoe);
+                                    Product product = new Product(temp[0], Integer.parseInt(temp[1]), Double.parseDouble(temp[2]), temp[3], temp[4]);
+                                    passCart.add(product);
                                 }
                                 for (int i = 0; i < passCart.size(); i++) {
                                     for (int j = 0; j < sellers.size(); j++) {
@@ -672,9 +674,6 @@ public class Login {
 
             }
             // customer viewing page
-        }
-
-
         }
     }
 }
