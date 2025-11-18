@@ -1,0 +1,28 @@
+# Kiro IDE files
+.kiro/
+.vscode/
+
+# Compiled class files
+*.class
+
+# Database files
+*.mv.db
+*.trace.db
+
+# JAR files (keep h2.jar if needed, but generally ignore)
+# *.jar
+
+# Text editor backup files
+*~
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Personal notes and planning files
+gamePlan
+Debugging List
+Questions for GTA
+mod4.txt

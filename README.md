@@ -1,77 +1,87 @@
-# Happy Feet Marketplace -> Online Store App Dev
+# Happy Feet - Online Shoe Marketplace
 
-A console-based Java marketplace application that allows customers to browse and purchase products while enabling sellers to manage their stores and inventory.
+A Java-based console application for managing an online marketplace with support for multiple product categories.
 
 ## Features
 
-### For Customers
+- **User Authentication**: Separate login flows for customers and sellers
+- **Product Management**: Support for 7 product categories (Shoes, Clothing, Accessories, Electronics, Home & Garden, Sports & Outdoors, Books & Media)
+- **Shopping Cart**: Full cart functionality with purchase history
+- **Search & Filter**: Category-aware search by name, price, store, and description
+- **Seller Dashboard**: Multi-store management with sales analytics
+- **Database Support**: H2 database integration with file-based fallback
 
-- Browse products by name, price, store, description, or quantity
-- Search products by category (Shoes, Clothing, Accessories)
-- Add items to shopping cart
-- Purchase products and view purchase history
-- Leave reviews for purchased products
+## Project Structure
 
-### For Sellers
-
-- Create and manage multiple stores
-- Add, edit, and remove products from inventory
-- Set product categories and pricing
-- View sales data and store information
-
-## Product Categories
-
-- **Shoes** - Footwear products
-- **Clothing** - Apparel and garments
-- **Accessories** - Fashion accessories and extras
+```
+├── src/
+│   ├── main/          # Main application entry points
+│   ├── model/         # Domain models (Product, Customer, Seller, etc.)
+│   ├── dao/           # Data Access Objects for database operations
+│   ├── service/       # Business logic services
+│   └── util/          # Utility classes (DatabaseManager, etc.)
+├── tests/             # Unit and integration tests
+├── data/              # Data files (Accounts.txt, Sellers.txt)
+├── docs/              # Project documentation and reports
+└── lib/               # External libraries (H2 database)
+```
 
 ## Getting Started
 
 ### Prerequisites
 
-- Java Development Kit (JDK) installed
-- Command line access
+- Java Development Kit (JDK) 8 or higher
+- H2 Database (included in `lib/h2.jar`)
 
 ### Compilation
 
 ```bash
-javac *.java
+# Compile all source files
+javac -cp "lib/h2.jar" src/**/*.java
+
+# Or compile specific modules
+javac src/main/*.java src/model/*.java src/dao/*.java src/service/*.java src/util/*.java
 ```
 
 ### Running the Application
 
-Choose one of the main entry points:
-
-**Marketplace (Recommended)**
-
 ```bash
-java Marketplace
+# Run the marketplace
+java -cp ".:lib/h2.jar" src/main/Marketplace
+
+# Or run the original login flow
+java -cp ".:lib/h2.jar" src/main/Login
 ```
 
-**Login (Legacy)**
+### Running Tests
 
 ```bash
-java Login
+javac -cp "lib/h2.jar" tests/*.java
+java -cp ".:lib/h2.jar" tests/TestProductManagement
+java -cp ".:lib/h2.jar" tests/TestUserAuthentication
+java -cp ".:lib/h2.jar" tests/TestOrderSystem
 ```
 
-## Data Storage
+## Product Categories
 
-The application uses file-based storage:
+The marketplace supports the following product categories:
 
-- `Accounts.txt` - User authentication data
-- `Sellers.txt` - Seller and product information
-- `[email]` - Individual customer files for cart and purchase history
+1. **Shoes** - Footwear of all types
+2. **Clothing** - Apparel and fashion items
+3. **Accessories** - Fashion accessories and add-ons
+4. **Electronics** - Electronic devices and gadgets
+5. **Home & Garden** - Home improvement and gardening items
+6. **Sports & Outdoors** - Athletic and outdoor equipment
+7. **Books & Media** - Books, music, and media content
 
-## Architecture
+## Data Migration
 
-- **Product.java** - Core product entity with category support
-- **Store.java** - Store management and product operations
-- **Seller.java** - Seller account and multi-store management
-- **Customer.java** - Customer account and shopping functionality
-- **ProductCategory.java** - Product categorization system
-- **ProductSearchService.java** - Advanced search and filtering
-- **DataMigrationService.java** - Legacy data compatibility
+The system automatically migrates legacy shoe-only data to the new multi-category format. Existing products without a category are automatically assigned to the "Shoes" category for backward compatibility.
 
-## Backward Compatibility
+## Contributors
 
-The system automatically migrates legacy shoe-only data to the new multi-category format while preserving all existing functionality.
+Team Project - Module 4
+
+## License
+
+Educational project for CPST 4270
