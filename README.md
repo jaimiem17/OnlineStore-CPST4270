@@ -77,11 +77,3 @@ The marketplace supports the following product categories:
 ## Data Migration
 
 The system automatically migrates legacy shoe-only data to the new multi-category format. Existing products without a category are automatically assigned to the "Shoes" category for backward compatibility.
-
-## Contributors
-
-Team Project - Module 4
-
-## License
-
-Educational project for CPST 4270
