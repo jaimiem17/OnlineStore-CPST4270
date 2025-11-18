@@ -1,8 +1,10 @@
 import java.util.ArrayList;
+import java.io.*;
+import java.sql.*;
 
 /**
  * Service class for handling data migration from legacy shoe data format
- * to the new product data format with categories.
+ * to the new product data format with categories, and from text files to database.
  */
 public class DataMigrationService {
     
@@ -187,5 +189,274 @@ public class DataMigrationService {
         }
         
         return newLine.toString();
+    }
+    
+    /**
+     * Migrates user accounts from Accounts.txt to the database.
+     * Format: email,password,userType (CUSTOMER or SELLER)
+     * @return number of users migrated successfully
+     */
+    public static int migrateAccountsToDatabase() {
+        File accountsFile = new File("Accounts.txt");
+        
+        if (!accountsFile.exists()) {
+            System.out.println("No Accounts.txt file found. Skipping user migration.");
+            return 0;
+        }
+        
+        int migratedCount = 0;
+        int skippedCount = 0;
+        UserDAO userDAO = new UserDAO();
+        
+        try (BufferedReader reader = new BufferedReader(new FileReader(accountsFile))) {
+            String line;
+            
+            while ((line = reader.readLine()) != null) {
+                if (line.trim().isEmpty()) {
+                    continue;
+                }
+                
+                try {
+                    String[] fields = line.split(",");
+                    
+                    if (fields.length < 3) {
+                        System.err.println("Invalid account line (insufficient fields): " + line);
+                        skippedCount++;
+                        continue;
+                    }
+                    
+                    String email = fields[0].trim();
+                    String password = fields[1].trim();
+                    String userType = fields[2].trim().toLowerCase();
+                    
+                    // Validate email
+                    if (!isValidEmail(email)) {
+                        System.err.println("Invalid email format: " + email);
+                        skippedCount++;
+                        continue;
+                    }
+                    
+                    // Validate password
+                    if (password.length() <= 5) {
+                        System.err.println("Password too short for user: " + email);
+                        skippedCount++;
+                        continue;
+                    }
+                    
+                    // Normalize user type
+                    String role = userType.equals("seller") ? "seller" : "customer";
+                    
+                    // Check if user already exists
+                    if (userDAO.getUserId(email) > 0) {
+                        System.out.println("User already exists in database, skipping: " + email);
+                        skippedCount++;
+                        continue;
+                    }
+                    
+                    // Create user in database
+                    boolean success = userDAO.createUser(email, password, email, role);
+                    
+                    if (success) {
+                        migratedCount++;
+                    } else {
+                        System.err.println("Failed to migrate user: " + email);
+                        skippedCount++;
+                    }
+                    
+                } catch (Exception e) {
+                    System.err.println("Error processing account line: " + line);
+                    System.err.println("Error: " + e.getMessage());
+                    skippedCount++;
+                }
+            }
+            
+            System.out.println("Account migration completed:");
+            System.out.println("  - Migrated: " + migratedCount + " users");
+            System.out.println("  - Skipped: " + skippedCount + " users");
+            
+        } catch (IOException e) {
+            System.err.println("Error reading Accounts.txt: " + e.getMessage());
+        }
+        
+        return migratedCount;
+    }
+    
+    /**
+     * Migrates products from Sellers.txt to the database.
+     * @return number of products migrated successfully
+     */
+    public static int migrateProductsToDatabase() {
+        File sellersFile = new File("Sellers.txt");
+        
+        if (!sellersFile.exists()) {
+            System.out.println("No Sellers.txt file found. Skipping product migration.");
+            return 0;
+        }
+        
+        int migratedCount = 0;
+        int skippedCount = 0;
+        ProductDAO productDAO = new ProductDAO();
+        UserDAO userDAO = new UserDAO();
+        
+        try (BufferedReader reader = new BufferedReader(new FileReader(sellersFile))) {
+            String line;
+            
+            while ((line = reader.readLine()) != null) {
+                if (line.trim().isEmpty()) {
+                    continue;
+                }
+                
+                try {
+                    String[] fields = line.split(",");
+                    
+                    // Skip lines with only seller info or seller + store info
+                    if (fields.length < 7) {
+                        continue;
+                    }
+                    
+                    String sellerEmail = fields[0].trim();
+                    String storeName = fields[1].trim();
+                    
+                    // Validate seller exists in database
+                    int sellerId = userDAO.getUserId(sellerEmail);
+                    if (sellerId <= 0) {
+                        System.err.println("Seller not found in database: " + sellerEmail);
+                        System.err.println("Please ensure accounts are migrated before products.");
+                        skippedCount++;
+                        continue;
+                    }
+                    
+                    // Parse products from the line
+                    ArrayList<Product> products = parseProductsFromLine(line);
+                    
+                    for (Product product : products) {
+                        try {
+                            // Check if product already exists
+                            int existingProductId = productDAO.getProductId(product.getName(), storeName);
+                            
+                            if (existingProductId > 0) {
+                                System.out.println("Product already exists in database, skipping: " + product.getName());
+                                skippedCount++;
+                                continue;
+                            }
+                            
+                            // Add product to database
+                            int productId = productDAO.addProduct(
+                                product.getName(),
+                                product.getCategory().name(),
+                                product.getPrice(),
+                                product.getQuantity(),
+                                storeName,
+                                product.getDescription()
+                            );
+                            
+                            if (productId > 0) {
+                                migratedCount++;
+                            } else {
+                                System.err.println("Failed to migrate product: " + product.getName());
+                                skippedCount++;
+                            }
+                            
+                        } catch (Exception e) {
+                            System.err.println("Error migrating product: " + product.getName());
+                            System.err.println("Error: " + e.getMessage());
+                            skippedCount++;
+                        }
+                    }
+                    
+                } catch (Exception e) {
+                    System.err.println("Error processing seller line: " + line);
+                    System.err.println("Error: " + e.getMessage());
+                    skippedCount++;
+                }
+            }
+            
+            System.out.println("Product migration completed:");
+            System.out.println("  - Migrated: " + migratedCount + " products");
+            System.out.println("  - Skipped: " + skippedCount + " products");
+            
+        } catch (IOException e) {
+            System.err.println("Error reading Sellers.txt: " + e.getMessage());
+        }
+        
+        return migratedCount;
+    }
+    
+    /**
+     * Performs complete migration from text files to database.
+     * Migrates accounts first, then products.
+     * @return true if migration completed successfully, false otherwise
+     */
+    public static boolean migrateAllDataToDatabase() {
+        System.out.println("=== Starting Data Migration to Database ===");
+        System.out.println();
+        
+        try {
+            // Initialize database tables
+            System.out.println("Initializing database tables...");
+            DatabaseManager.initializeTables();
+            System.out.println();
+            
+            // Migrate accounts first (users must exist before products)
+            System.out.println("Migrating user accounts...");
+            int usersMigrated = migrateAccountsToDatabase();
+            System.out.println();
+            
+            // Migrate products
+            System.out.println("Migrating products...");
+            int productsMigrated = migrateProductsToDatabase();
+            System.out.println();
+            
+            System.out.println("=== Migration Summary ===");
+            System.out.println("Total users migrated: " + usersMigrated);
+            System.out.println("Total products migrated: " + productsMigrated);
+            System.out.println("=== Migration Complete ===");
+            
+            return true;
+            
+        } catch (SQLException e) {
+            System.err.println("Database error during migration: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        } catch (Exception e) {
+            System.err.println("Unexpected error during migration: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+    
+    /**
+     * Validates email format.
+     * @param email email address to validate
+     * @return true if valid, false otherwise
+     */
+    private static boolean isValidEmail(String email) {
+        if (email == null || email.trim().isEmpty()) {
+            return false;
+        }
+        
+        // Basic email validation
+        return email.contains("@") && 
+               (email.contains(".com") || email.contains(".edu") || email.contains(".gov") || email.contains(".org"));
+    }
+    
+    /**
+     * Main method for testing migration functionality.
+     * @param args command line arguments
+     */
+    public static void main(String[] args) {
+        System.out.println("Testing DataMigrationService...");
+        System.out.println();
+        
+        // Perform migration
+        boolean success = migrateAllDataToDatabase();
+        
+        if (success) {
+            System.out.println();
+            System.out.println("Migration test completed successfully!");
+        } else {
+            System.out.println();
+            System.out.println("Migration test failed!");
+        }
     }
 }

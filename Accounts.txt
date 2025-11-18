@@ -1,0 +1,5 @@
+test@example.com,password123,CUSTOMER
+seller@example.com,password456,SELLER
+admin@example.com,adminpass,SELLER
+jmorris13@tulane.eddu,jaimieee,CUSTOMER
+jaimiem@yahoo.com,passw0rd!,CUSTOMER

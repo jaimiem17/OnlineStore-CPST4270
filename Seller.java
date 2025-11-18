@@ -1,12 +1,22 @@
 import java.io.*;
 import java.util.ArrayList;
+import java.util.List;
 
 public class Seller {
     private ArrayList<Store> stores = new ArrayList<>();
     private String email;
+    private ProductDAO productDAO;
 
     public Seller(String email) {
         this.email = email;
+        this.productDAO = new ProductDAO();
+    }
+    
+    public Seller(String email, boolean useDatabase) {
+        this.email = email;
+        if (useDatabase) {
+            this.productDAO = new ProductDAO();
+        }
     }
 
     public String getEmail() {
@@ -60,6 +70,49 @@ public class Seller {
             System.out.println("You are not affiliated with " + storeName);
         }
     }
+    
+    /**
+     * Creates a product using database storage
+     * @param storeName store name
+     * @param productName product name
+     * @param quantity product quantity
+     * @param price product price
+     * @param description product description
+     * @param category product category
+     * @param userId user ID for change logging
+     * @return product ID if successful, -1 otherwise
+     */
+    public int createProductDB(String storeName, String productName,
+                               int quantity, double price, String description, 
+                               ProductCategory category, int userId) {
+        // Validate category
+        if (category == null) {
+            System.out.println("Error: Product category cannot be null");
+            return -1;
+        }
+        
+        // Check if seller is affiliated with the store
+        if (!checkIfStoreExists(storeName)) {
+            System.out.println("You are not affiliated with " + storeName);
+            return -1;
+        }
+        
+        // Add product to database
+        int productId = productDAO.addProduct(productName, category.name(), price, quantity, storeName, description);
+        
+        if (productId > 0) {
+            // Also add to in-memory store for backward compatibility
+            for (Store s : stores) {
+                if (s.getName().equalsIgnoreCase(storeName)) {
+                    int index = stores.indexOf(s);
+                    stores.get(index).addProduct(new Product(productName, quantity, price, description, storeName, category));
+                    break;
+                }
+            }
+        }
+        
+        return productId;
+    }
 
     // Backward-compatible method that defaults to SHOES category
     public void createProduct(String storeName, String productName,
@@ -82,6 +135,39 @@ public class Seller {
         }
         // whenever this method is called, UPDATE SELLER FILE WITH WRITE TO SELLER
     }
+    
+    /**
+     * Removes a product using database storage
+     * @param productId product ID to remove
+     * @param storeName store name
+     * @param product product object for in-memory removal
+     * @return true if successful, false otherwise
+     */
+    public boolean removeProductDB(int productId, String storeName, Product product) {
+        // Check if seller is affiliated with the store
+        if (!checkIfStoreExists(storeName)) {
+            System.out.println("You are not affiliated with " + storeName);
+            return false;
+        }
+        
+        // Remove from database
+        boolean success = productDAO.deleteProduct(productId);
+        
+        if (success) {
+            // Also remove from in-memory store for backward compatibility
+            for (Store s : stores) {
+                if (s.getName().equalsIgnoreCase(storeName)) {
+                    if (s.getProducts().size() != 0) {
+                        int index = stores.indexOf(s);
+                        stores.get(index).removeProduct(product);
+                    }
+                    break;
+                }
+            }
+        }
+        
+        return success;
+    }
 
     public void editProduct(Product oldProduct, String newName, String newDesc, String storeName, int newQuantity, double newPrice, ProductCategory newCategory) {
         // Validate category
@@ -97,6 +183,80 @@ public class Seller {
                 stores.get(index).setProduct(oldProduct, newProduct);
             }
         }
+    }
+    
+    /**
+     * Edits a product using database storage with change logging
+     * @param productId product ID to edit
+     * @param oldProduct old product data
+     * @param newName new product name
+     * @param newDesc new description
+     * @param storeName store name
+     * @param newQuantity new quantity
+     * @param newPrice new price
+     * @param newCategory new category
+     * @param userId user ID for change logging
+     * @return true if successful, false otherwise
+     */
+    public boolean editProductDB(int productId, Product oldProduct, String newName, String newDesc, 
+                                 String storeName, int newQuantity, double newPrice, 
+                                 ProductCategory newCategory, int userId) {
+        // Validate category
+        if (newCategory == null) {
+            System.out.println("Error: Product category cannot be null");
+            return false;
+        }
+        
+        // Check if seller is affiliated with the store
+        if (!checkIfStoreExists(storeName)) {
+            System.out.println("You are not affiliated with " + storeName);
+            return false;
+        }
+        
+        // Track changes for logging
+        boolean success = true;
+        
+        // Update name if changed
+        if (!oldProduct.getName().equals(newName)) {
+            success &= productDAO.updateProduct(productId, "name", oldProduct.getName(), newName, userId);
+        }
+        
+        // Update description if changed
+        if (!oldProduct.getDescription().equals(newDesc)) {
+            success &= productDAO.updateProduct(productId, "description", oldProduct.getDescription(), newDesc, userId);
+        }
+        
+        // Update price if changed
+        if (oldProduct.getPrice() != newPrice) {
+            success &= productDAO.updateProduct(productId, "price", 
+                String.valueOf(oldProduct.getPrice()), String.valueOf(newPrice), userId);
+        }
+        
+        // Update quantity if changed
+        if (oldProduct.getQuantity() != newQuantity) {
+            success &= productDAO.updateProduct(productId, "quantity", 
+                String.valueOf(oldProduct.getQuantity()), String.valueOf(newQuantity), userId);
+        }
+        
+        // Update category if changed
+        if (oldProduct.getCategory() != newCategory) {
+            success &= productDAO.updateProduct(productId, "category", 
+                oldProduct.getCategory().name(), newCategory.name(), userId);
+        }
+        
+        if (success) {
+            // Also update in-memory store for backward compatibility
+            Product newProduct = new Product(newName, newQuantity, newPrice, newDesc, storeName, newCategory);
+            for (Store s : stores) {
+                if (s.getName().equals(storeName)) {
+                    int index = stores.indexOf(s);
+                    stores.get(index).setProduct(oldProduct, newProduct);
+                    break;
+                }
+            }
+        }
+        
+        return success;
     }
 
     // Backward-compatible method that preserves the original category
@@ -456,6 +616,86 @@ public class Seller {
             System.out.println("Error in displaying file");
             return;
         }
+    }
+    
+    /**
+     * Loads products from database into the seller's stores
+     * This method synchronizes in-memory store data with database
+     */
+    public void loadProductsFromDatabase() {
+        if (productDAO == null) {
+            System.err.println("ProductDAO not initialized. Cannot load products from database.");
+            return;
+        }
+        
+        for (Store store : stores) {
+            // Get products for this store from database
+            List<Product> dbProducts = productDAO.getProductsByStore(store.getName());
+            
+            // Clear existing products and add database products
+            store.getProducts().clear();
+            for (Product product : dbProducts) {
+                store.addProduct(product);
+            }
+            
+            System.out.println("Loaded " + dbProducts.size() + " products for store: " + store.getName());
+        }
+    }
+    
+    /**
+     * Gets all products for a specific store from the database
+     * @param storeName store name to get products for
+     * @return List of products from the database
+     */
+    public List<Product> getStoreProductsFromDB(String storeName) {
+        if (productDAO == null) {
+            System.err.println("ProductDAO not initialized.");
+            return new ArrayList<>();
+        }
+        
+        return productDAO.getProductsByStore(storeName);
+    }
+    
+    /**
+     * Searches for a product by ID in the database
+     * @param productId product ID to search for
+     * @return Product object if found, null otherwise
+     */
+    public Product findProductByIdDB(int productId) {
+        if (productDAO == null) {
+            System.err.println("ProductDAO not initialized.");
+            return null;
+        }
+        
+        return productDAO.getProductById(productId);
+    }
+    
+    /**
+     * Views the audit trail for a product (change history)
+     * This allows sellers to see all modifications made to a product
+     * @param productId product ID to view audit trail for
+     */
+    public void viewProductAuditTrail(int productId) {
+        if (productDAO == null) {
+            System.err.println("ProductDAO not initialized.");
+            return;
+        }
+        
+        productDAO.viewProductAuditTrail(productId);
+    }
+    
+    /**
+     * Gets the change history for a product
+     * @param productId product ID to get history for
+     * @return List of ChangeLog entries
+     */
+    public List<ChangeLog> getProductChangeHistory(int productId) {
+        if (productDAO == null) {
+            System.err.println("ProductDAO not initialized.");
+            return new ArrayList<>();
+        }
+        
+        return productDAO.getProductChangeHistory(productId);
     }
 }
 

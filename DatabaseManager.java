@@ -71,7 +71,9 @@ public class DatabaseManager {
                     name VARCHAR(100) NOT NULL,
                     category VARCHAR(50),
                     price DECIMAL(10,2) NOT NULL,
-                    quantity INT DEFAULT 0
+                    quantity INT DEFAULT 0,
+                    store_name VARCHAR(100),
+                    description VARCHAR(500)
                 )
                 """;
             stmt.execute(createProductsTable);

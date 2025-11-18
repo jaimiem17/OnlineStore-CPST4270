@@ -101,6 +101,14 @@ public class Product {
 
     @Override
     public String toString(){
+        return String.format("Name: %s | Category: %s | Price: $%.2f | Quantity: %d | Store: %s | Description: %s", 
+            this.name, this.category.getDisplayName(), this.price, this.quantity, this.storeName, this.description);
+    }
+    
+    /**
+     * Returns CSV format for file storage
+     */
+    public String toCSV(){
         return String.format("%s,%d,%.2f,%s,%s,%s", this.name, this.quantity, this.price, this.description, this.storeName, this.category.name());
     }
 }

@@ -165,6 +165,34 @@ public class Marketplace {
 
 
     public static void main(String[] args) {
+        // Initialize database on startup
+        try {
+            System.out.println("Initializing database...");
+            DatabaseManager.initializeTables();
+            System.out.println("Database initialized successfully.");
+            System.out.println();
+            
+            // Check if migration is needed
+            File accountsFile = new File("Accounts.txt");
+            File sellersFile = new File("Sellers.txt");
+            
+            if (accountsFile.exists() || sellersFile.exists()) {
+                System.out.println("Text files detected. Would you like to migrate data to database? (yes/no)");
+                Scanner migrationScanner = new Scanner(System.in);
+                String migrationResponse = migrationScanner.nextLine();
+                
+                if (migrationResponse.equalsIgnoreCase("yes") || migrationResponse.equalsIgnoreCase("y")) {
+                    System.out.println();
+                    DataMigrationService.migrateAllDataToDatabase();
+                    System.out.println();
+                }
+            }
+            
+        } catch (Exception e) {
+            System.err.println("Warning: Database initialization failed: " + e.getMessage());
+            System.err.println("Continuing with file-based operations...");
+        }
+        
         String email = "";
         String password = "";
         String userType = "";
@@ -976,8 +1004,14 @@ public class Marketplace {
                 keepGoing = scanner.nextLine();
             } while (keepGoing.equalsIgnoreCase("yes") || keepGoing.equalsIgnoreCase("y"));
         }
-
-
+        
+        // Close database connection on application exit
+        try {
+            DatabaseManager.closeConnection();
+            System.out.println("Application shutting down. Goodbye!");
+        } catch (Exception e) {
+            System.err.println("Error closing database connection: " + e.getMessage());
+        }
     }
 }
 

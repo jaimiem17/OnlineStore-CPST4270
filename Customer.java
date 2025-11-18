@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.List;
 import java.io.*;
 
 public class Customer {
@@ -200,5 +201,167 @@ public class Customer {
      */
     public void clearShoppingCart() {
         shoppingCart.clear();
+    }
+    
+    /**
+     * Gets the current reward points balance for this customer
+     * @return number of reward points, -1 if error
+     */
+    public int getRewardPointsBalance() {
+        try {
+            UserDAO userDAO = new UserDAO();
+            int userId = userDAO.getUserId(this.email);
+            if (userId > 0) {
+                return userDAO.getRewardPoints(userId);
+            }
+            return -1;
+        } catch (Exception e) {
+            System.err.println("Error getting reward points: " + e.getMessage());
+            return -1;
+        }
+    }
+    
+    /**
+     * Redeems reward points for a discount on purchase
+     * @param points number of points to redeem
+     * @return discount amount (1 point = $0.01), or 0 if redemption failed
+     */
+    public double redeemRewardPoints(int points) {
+        try {
+            UserDAO userDAO = new UserDAO();
+            int userId = userDAO.getUserId(this.email);
+            if (userId > 0) {
+                if (userDAO.redeemPoints(userId, points)) {
+                    // Each point is worth $0.01
+                    double discount = points * 0.01;
+                    System.out.println("Successfully redeemed " + points + " points for $" + 
+                        String.format("%.2f", discount) + " discount");
+                    return discount;
+                }
+            }
+            return 0.0;
+        } catch (Exception e) {
+            System.err.println("Error redeeming reward points: " + e.getMessage());
+            return 0.0;
+        }
+    }
+    
+    /**
+     * Displays the current reward points balance
+     */
+    public void displayRewardPoints() {
+        int points = getRewardPointsBalance();
+        if (points >= 0) {
+            double value = points * 0.01;
+            System.out.println("Current Reward Points: " + points + 
+                " (Worth $" + String.format("%.2f", value) + ")");
+        } else {
+            System.out.println("Unable to retrieve reward points balance.");
+        }
+    }
+    
+    /**
+     * Processes a purchase by creating database records for the order
+     * @param totalPrice total price of the order
+     * @return order ID if successful, -1 otherwise
+     */
+    public int processPurchase(double totalPrice) {
+        try {
+            UserDAO userDAO = new UserDAO();
+            int userId = userDAO.getUserId(this.email);
+            
+            if (userId <= 0) {
+                System.err.println("User not found in database");
+                return -1;
+            }
+            
+            // Create the order
+            OrderDAO orderDAO = new OrderDAO();
+            int orderId = orderDAO.createOrder(userId, totalPrice);
+            
+            if (orderId <= 0) {
+                System.err.println("Failed to create order");
+                return -1;
+            }
+            
+            // Add order details for each item in shopping cart
+            for (Product product : shoppingCart) {
+                int productId = getProductId(product);
+                
+                if (productId > 0) {
+                    orderDAO.addOrderDetail(orderId, productId, product.getQuantity());
+                } else {
+                    System.err.println("Warning: Could not find product ID for " + product.getName());
+                }
+            }
+            
+            System.out.println("Order #" + orderId + " created successfully!");
+            return orderId;
+            
+        } catch (Exception e) {
+            System.err.println("Error processing purchase: " + e.getMessage());
+            e.printStackTrace();
+            return -1;
+        }
+    }
+    
+    /**
+     * Helper method to get product ID from database
+     * @param product Product object to find
+     * @return product ID if found, -1 otherwise
+     */
+    private int getProductId(Product product) {
+        try {
+            ProductDAO productDAO = new ProductDAO();
+            return productDAO.getProductId(product.getName(), product.getStore());
+        } catch (Exception e) {
+            System.err.println("Error getting product ID: " + e.getMessage());
+            return -1;
+        }
+    }
+    
+    /**
+     * Displays order history from the database
+     */
+    public void viewOrderHistory() {
+        try {
+            UserDAO userDAO = new UserDAO();
+            int userId = userDAO.getUserId(this.email);
+            
+            if (userId <= 0) {
+                System.out.println("User not found in database");
+                return;
+            }
+            
+            OrderDAO orderDAO = new OrderDAO();
+            List<Order> orders = orderDAO.getOrderHistory(userId);
+            
+            if (orders.isEmpty()) {
+                System.out.println("No order history found.");
+                return;
+            }
+            
+            System.out.println("\n=== Order History ===");
+            System.out.println("=====================");
+            
+            for (Order order : orders) {
+                System.out.println("\nOrder #" + order.getOrderId() + 
+                    " - Date: " + order.getOrderDate() + 
+                    " - Total: $" + String.format("%.2f", order.getTotalPrice()));
+                System.out.println("Items:");
+                
+                for (OrderDetail detail : order.getOrderDetails()) {
+                    System.out.println("  - " + detail.getProductName() + 
+                        " x" + detail.getQuantity() + 
+                        " @ $" + String.format("%.2f", detail.getProductPrice()) + 
+                        " = $" + String.format("%.2f", detail.getSubtotal()));
+                }
+                System.out.println("---");
+            }
+            
+        } catch (Exception e) {
+            System.err.println("Error viewing order history: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }

@@ -67,7 +67,22 @@ public class Store {
             if (product.getName().equalsIgnoreCase(productName)) {
                 productFound = true;
                 if (quantity <= product.getQuantity()) {
-                    product.setQuantity(product.getQuantity() - quantity);
+                    int oldQuantity = product.getQuantity();
+                    int newQuantity = oldQuantity - quantity;
+                    product.setQuantity(newQuantity);
+                    
+                    // Update product quantity in database
+                    try {
+                        ProductDAO productDAO = new ProductDAO();
+                        int productId = productDAO.getProductId(product.getName(), this.name);
+                        if (productId > 0) {
+                            productDAO.updateProduct(productId, "quantity", 
+                                String.valueOf(oldQuantity), String.valueOf(newQuantity), -1);
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Error updating product quantity in database: " + e.getMessage());
+                    }
+                    
                     purchaseDetail(product, quantity, customer);
                     return;
                 } else {
@@ -86,6 +101,18 @@ public class Store {
         sales.add(customer.getEmail() + " bought " + quantity + " " + product.getName() +
                 " .Revenue generated: " + revenue );
         this.revenue += revenue;
+        
+        // Award reward points: 1 point per dollar spent
+        try {
+            UserDAO userDAO = new UserDAO();
+            int userId = userDAO.getUserId(customer.getEmail());
+            if (userId > 0) {
+                int pointsToAward = (int) Math.floor(revenue);
+                userDAO.addRewardPoints(userId, pointsToAward);
+            }
+        } catch (Exception e) {
+            System.err.println("Error awarding reward points: " + e.getMessage());
+        }
     }
 
     public ArrayList<Customer> getCustomers() {

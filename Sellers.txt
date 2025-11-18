@@ -1,0 +1,4 @@
+seller@example.com,TestStore,Running Shoes,10,79.99,Comfortable running shoes,TestStore,SHOES
+seller@example.com,TestStore,Laptop,5,999.99,High-performance laptop,TestStore,ELECTRONICS
+jmorris13@tulane.eddu,
+jaimiem@yahoo.com,
