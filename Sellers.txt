@@ -1,0 +1,4 @@
+jmorris13@tulane.eddu,
+jaimiem@yahoo.com,
+usertest123@tulane.edu,
+seller@example.com,TestStore,Name: Laptop | Category: Electronics | Price: $999.99 | Quantity: 5 | Store: TestStore | Description: High-performance laptop,Name: Ballet flats | Category: Shoes | Price: $60.00 | Quantity: 50 | Store: TestStore | Description: pink ballerina shoes,

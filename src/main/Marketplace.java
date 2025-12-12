@@ -1,5 +1,7 @@
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Scanner;
 import java.io.*;
 import java.util.function.BiFunction;
@@ -14,6 +16,10 @@ public class Marketplace {
     public static final String CREATE_PASSWORD_PROMPT = "Please enter a password greater than 5 characters.";
 
     public static final String BUYER_OR_SELLER = "1: Customer\n2: Seller";
+    
+    private static final int MAX_PRODUCT_NAME_LENGTH = 120;
+    private static final int MAX_DESCRIPTION_LENGTH = 300;
+    private static final int MAX_CHANGE_REASON_LENGTH = 120;
 
     private static ArrayList<Seller> sellers = new ArrayList<>();
 
@@ -194,167 +200,34 @@ public class Marketplace {
         }
         
         String email = "";
-        String password = "";
         String userType = "";
         Scanner scanner = new Scanner(System.in);
-        System.out.println(WELCOME_PROMPT);
-        System.out.println(SIGN_IN_PROMPT);
-        String response = scanner.nextLine();
+        boolean authenticated = false;
 
+        while (!authenticated) {
+            System.out.println(WELCOME_PROMPT);
+            System.out.println(SIGN_IN_PROMPT);
+            String response = scanner.nextLine().trim();
 
-        while (!"1".equals(response) && !"2".equals(response)) {
-            System.out.println("Please either select 1 or 2.");
-            response = scanner.nextLine();
-        }
-
-
-        if ("1".equals(response)) { // sign in
-            System.out.println(ENTER_YOUR_EMAIL);
-            email = scanner.nextLine();
-
-            System.out.println(LOGIN_PASSWORD_PROMPT);
-            password = scanner.nextLine();
-
-            File f = new File("Accounts.txt");
-            try {
-                BufferedReader br = new BufferedReader(new FileReader(f));
-                ArrayList<String> accountInfo = new ArrayList<>();
-                String line = "";
-                while ((line = br.readLine()) != null) {
-                    accountInfo.add(line);
+            if ("1".equals(response)) {
+                AccountRecord record = attemptLogin(scanner);
+                if (record != null) {
+                    email = record.email;
+                    userType = record.role;
+                    authenticated = true;
                 }
-                br.close();
-                ArrayList<String> emails = new ArrayList<>();
-                for (int i = 0; i < accountInfo.size(); i++) {
-                    emails.add(accountInfo.get(i).split(",")[0]);
-                }
-                while (!emails.contains(email)) {
-                    System.out.println("This e-mail does not exist in our database.");
-                    System.out.println(ENTER_YOUR_EMAIL);
-                    email = scanner.nextLine();
-                }
-                int index = emails.indexOf(email);
-                while (!accountInfo.get(index).split(",")[1].equals(password)) {
-                    System.out.println("Incorrect Password.");
-                    System.out.println(LOGIN_PASSWORD_PROMPT);
-                    password = scanner.nextLine();
-                }
-                System.out.println("Login successful!");
-
-
-                if (accountInfo.get(index).split(",")[2].equals("SELLER")) {
-                    userType = "SELLER";
-                } else {
-                    userType = "CUSTOMER";
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-        } else { // create account
-            System.out.println(ENTER_YOUR_EMAIL);
-            email = scanner.nextLine();
-
-            while (!email.contains("@") && (!email.contains(".com") || !email.contains(".edu") || !email.contains(".gov"))) {
-                System.out.println("Invalid e-mail.");
-                System.out.println(ENTER_YOUR_EMAIL);
-                email = scanner.nextLine();
-            }
-
-            File f = new File("Accounts.txt");
-            if (f.exists()) {
-                try (BufferedReader bfr = new BufferedReader(new FileReader("Accounts.txt"))) {
-                    String line = "";
-                    while ((line = bfr.readLine()) != null) {
-                        String[] arr = line.split(",");
-                        while (arr[0].equals(email)) {
-                            System.out.println("This e-mail has already been taken.");
-                            System.out.println(ENTER_YOUR_EMAIL);
-                            email = scanner.nextLine();
-                        }
-                    }
-                } catch (IOException e) {
-                    System.out.println("Unable to read to the accounts file.");
-                }
-
-                System.out.println(CREATE_PASSWORD_PROMPT);
-                password = scanner.nextLine();
-                if (password == null || password.length() <= 5) { // case of invalid password
-                    boolean validPassword = false;
-                    while (!validPassword) {
-                        System.out.println("Invalid password. Please enter a valid Password:");
-                        password = scanner.nextLine();
-                        if (password != null && password.length() > 5) {
-                            validPassword = true;
-                        }
-                    }
-                }
-
-                System.out.println(BUYER_OR_SELLER);
-                userType = scanner.nextLine();
-                while (!"1".equals(userType) && !"2".equals(userType)) {
-                    System.out.println("Please enter either 1 or 2.");
-                }
-                if ("1".equals(userType)) {
-                    userType = "CUSTOMER";
-                } else {
-                    userType = "SELLER";
-                    Seller seller = new Seller(email);
-                    sellers.add(seller); // hope it works
-                }
-
-
-                try (BufferedWriter bwr = new BufferedWriter(new FileWriter("Accounts.txt", true))) {
-                    bwr.write(email + "," + password + "," + userType + "\n");
-                } catch (IOException io) {
-                    System.out.println("Error writing to the accounts file.");
-                }
-
-                try (BufferedWriter bwr = new BufferedWriter(new FileWriter("Sellers.txt", true))) {
-                    bwr.write(email + "," + "\n");
-                } catch (IOException io) {
-                    System.out.println("Error writing to the seller file.");
+            } else if ("2".equals(response)) {
+                AccountRecord record = handleAccountCreation(scanner);
+                if (record != null) {
+                    email = record.email;
+                    userType = record.role;
+                    authenticated = true;
                 }
             } else {
-                f = new File("Accounts.txt");
-                System.out.println(CREATE_PASSWORD_PROMPT);
-                password = scanner.nextLine();
-                if (password == null || password.length() <= 5) { // case of invalid password
-                    boolean validPassword = false;
-                    while (!validPassword) {
-                        System.out.println("Invalid password. Please enter a valid Password:");
-                        password = scanner.nextLine();
-                        if (password != null && password.length() > 5) {
-                            validPassword = true;
-                        }
-                    }
-                }
-
-                System.out.println(BUYER_OR_SELLER);
-                userType = scanner.nextLine();
-                while (!"1".equals(userType) && !"2".equals(userType)) {
-                    System.out.println("Please enter either 1 or 2.");
-                }
-                if ("1".equals(userType)) {
-                    userType = "CUSTOMER";
-                } else {
-                    userType = "SELLER";
-                    Seller seller = new Seller(email);
-                    sellers.add(seller); // hope it works
-                }
-                try (BufferedWriter bwr = new BufferedWriter(new FileWriter("Accounts.txt", true))) {
-                    bwr.write(email + "," + password + "," + userType + "\n");
-                } catch (IOException e) {
-                    System.out.println("Error writing to the accounts file.");
-                }
-                try (BufferedWriter bwr = new BufferedWriter(new FileWriter("Sellers.txt", true))) {
-                    bwr.write(email + "," + "\n");
-                } catch (IOException io) {
-                    System.out.println("Error writing to the seller file.");
-                }
+                System.out.println("Please either select 1 or 2.");
             }
         }
-        
+
         loadMarket();
 
 
@@ -377,6 +250,14 @@ public class Marketplace {
             
 
 
+            int sellerUserId = -1;
+            try {
+                UserDAO userDAO = new UserDAO();
+                sellerUserId = userDAO.getUserId(email);
+            } catch (Exception e) {
+                System.err.println("Warning: Unable to load seller profile: " + e.getMessage());
+            }
+            
             String performActivity = "";
             do {
                 /**
@@ -392,7 +273,7 @@ public class Marketplace {
                 System.out.println("3: Remove a product from one of your Stores");
                 System.out.println("4: Edit a product from one of your Stores");
                 System.out.println("5: View your stores and their details");
-                System.out.println("6: View a customer shopping cart");
+                System.out.println("6: View a product's change history");
                 int choice = scanner.nextInt();
                 scanner.nextLine();
                 switch (choice) {
@@ -406,46 +287,25 @@ public class Marketplace {
                         System.out.println("What is the name of the store you would like to add a product to?");
                         storeName = scanner.nextLine();
                         if (sellers.get(index).checkIfStoreExists(storeName)) {
-                            System.out.println("What is the name of your product?");
-                            String productName = scanner.nextLine();
-                            System.out.println("How many products do you want to manufacture?");
-                            int quantity = scanner.nextInt();
-                            scanner.nextLine();
-                            System.out.println("What will the price of your product be?");
-                            double price = scanner.nextDouble();
-                            scanner.nextLine();
-                            System.out.println("What is the description of your product?");
-                            String description = scanner.nextLine();
+                            String productName = promptLimitedText(scanner, "What is the name of your product?", MAX_PRODUCT_NAME_LENGTH, false);
+                            int quantity = promptNonNegativeInt(scanner, "How many products do you want to manufacture?");
+                            double price = promptPositiveDouble(scanner, "What will the price of your product be?");
+                            String description = promptLimitedText(scanner, "What is the description of your product? (you may leave this blank)", MAX_DESCRIPTION_LENGTH, true);
+                            if (description.isEmpty()) {
+                                description = "No description provided";
+                            }
+                            ProductCategory category = promptForCategorySelection(scanner);
+                            sellers.get(index).writeToSellerFileAddProduct(storeName, productName, quantity, price, description, category);
                             
-                            // Category selection
-                            System.out.println("Please select a category for your product:");
-                            System.out.println("1. Shoes");
-                            System.out.println("2. Clothing");
-                            System.out.println("3. Accessories");
-                            System.out.println("4. Electronics");
-                            System.out.println("5. Home & Garden");
-                            System.out.println("6. Sports & Outdoors");
-                            System.out.println("7. Books & Media");
-                            
-                            int categoryChoice = 0;
-                            boolean validCategory = false;
-                            while (!validCategory) {
+                            if (sellerUserId > 0) {
                                 try {
-                                    categoryChoice = scanner.nextInt();
-                                    scanner.nextLine();
-                                    if (categoryChoice >= 1 && categoryChoice <= 7) {
-                                        validCategory = true;
-                                    } else {
-                                        System.out.println("Please enter a number between 1 and 7.");
-                                    }
+                                    sellers.get(index).createProductDB(storeName, productName, quantity, price, description, category, sellerUserId);
                                 } catch (Exception e) {
-                                    System.out.println("Please enter a valid number between 1 and 7.");
-                                    scanner.nextLine(); // Clear invalid input
+                                    System.err.println("Warning: Unable to sync product with database: " + e.getMessage());
                                 }
                             }
                             
-                            ProductCategory category = ProductCategory.values()[categoryChoice - 1];
-                            sellers.get(index).writeToSellerFileAddProduct(storeName, productName, quantity, price, description, category);
+                            System.out.println("Product added successfully.");
                         } else {
                             System.out.println("Sorry, you are not affiliated with " + storeName);
                         }
@@ -454,77 +314,75 @@ public class Marketplace {
                         System.out.println("What is the name of the store you would to remove a product from?");
                         storeName = scanner.nextLine();
                         if (sellers.get(index).checkIfStoreExists(storeName)) {
-                            System.out.println("What was the name of the product?");
-                            String productName = scanner.nextLine();
-                            System.out.println("How many of these products were manufactured (quantity).");
-                            int quantity = scanner.nextInt();
-                            scanner.nextLine();
-                            System.out.println("What was the price of your product?");
-                            double price = scanner.nextDouble();
-                            scanner.nextLine();
-                            System.out.println("What was the description of your product?");
-                            String description = scanner.nextLine();
-                            sellers.get(index).writeToSellerFileRemoveProduct(storeName, productName, quantity, price, description);
+                            String productName = promptLimitedText(scanner, "What was the name of the product?", MAX_PRODUCT_NAME_LENGTH, false);
+                            try {
+                                ProductDAO productDAO = new ProductDAO();
+                                int productId = productDAO.getProductId(productName, storeName);
+                                Product product = productId > 0 ? productDAO.getProductById(productId) : null;
+                                if (product == null) {
+                                    System.out.println("Unable to locate that product in " + storeName + ".");
+                                } else {
+                                    sellers.get(index).writeToSellerFileRemoveProduct(storeName, product.getName(), product.getQuantity(), product.getPrice(), product.getDescription(), product.getCategory());
+                                    try {
+                                        if (sellerUserId > 0) {
+                                            sellers.get(index).removeProductDB(productId, storeName, product);
+                                        } else {
+                                            sellers.get(index).removeProduct(storeName, product);
+                                        }
+                                    } catch (Exception e) {
+                                        sellers.get(index).removeProduct(storeName, product);
+                                        System.err.println("Warning: Unable to remove product from database: " + e.getMessage());
+                                    }
+                                    System.out.println("Product removed successfully.");
+                                }
+                            } catch (Exception e) {
+                                System.err.println("Error removing product: " + e.getMessage());
+                            }
                         }
                         break;
                     case 4:
                         System.out.println("What is the name of the store you would like to edit a product from?");
                         storeName = scanner.nextLine();
                         if (sellers.get(index).checkIfStoreExists(storeName)) {
-                            System.out.println("What is the name of your old product?");
-                            String productName = scanner.nextLine();
-                            System.out.println("What was the quantity of the old product");
-                            int quantity = scanner.nextInt();
-                            scanner.nextLine();
-                            System.out.println("What was the price of the old product");
-                            double price = scanner.nextDouble();
-                            scanner.nextLine();
-                            System.out.println("What is the description of the old product");
-                            String description = scanner.nextLine();
+                            String productName = promptLimitedText(scanner, "What is the name of your product?", MAX_PRODUCT_NAME_LENGTH, false);
+                            try {
+                                ProductDAO productDAO = new ProductDAO();
+                                int productId = productDAO.getProductId(productName, storeName);
+                                Product oldProduct = productId > 0 ? productDAO.getProductById(productId) : null;
+                                if (oldProduct == null) {
+                                    System.out.println("Unable to find that product in " + storeName + ".");
+                                    break;
+                                }
 
-                            System.out.println("What do you want the new name of the product to be?");
-                            String newProductName = scanner.nextLine();
-                            System.out.println("What is the new quantity?");
-                            int newQuantity = scanner.nextInt();
-                            scanner.nextLine();
-                            System.out.println("What is the new price?");
-                            double newPrice = scanner.nextDouble();
-                            scanner.nextLine();
-                            System.out.println("What is the new description?");
-                            String newDescription = scanner.nextLine();
-                            
-                            // Category selection for new product
-                            System.out.println("Please select a new category for your product:");
-                            System.out.println("1. Shoes");
-                            System.out.println("2. Clothing");
-                            System.out.println("3. Accessories");
-                            System.out.println("4. Electronics");
-                            System.out.println("5. Home & Garden");
-                            System.out.println("6. Sports & Outdoors");
-                            System.out.println("7. Books & Media");
-                            
-                            int categoryChoice = 0;
-                            boolean validCategory = false;
-                            while (!validCategory) {
+                                String newProductName = promptUpdatedText(scanner, "What do you want the new name of the product to be?", oldProduct.getName(), MAX_PRODUCT_NAME_LENGTH);
+                                int newQuantity = promptUpdatedInt(scanner, "What is the new quantity?", oldProduct.getQuantity());
+                                double newPrice = promptUpdatedDouble(scanner, "What is the new price?", oldProduct.getPrice());
+                                String newDescription = promptUpdatedText(scanner, "What is the new description?", oldProduct.getDescription(), MAX_DESCRIPTION_LENGTH);
+                                ProductCategory newCategory = promptUpdatedCategory(scanner, oldProduct.getCategory());
+                                String changeReason = promptChangeReason(scanner);
+
+                                boolean updated = false;
                                 try {
-                                    categoryChoice = scanner.nextInt();
-                                    scanner.nextLine();
-                                    if (categoryChoice >= 1 && categoryChoice <= 7) {
-                                        validCategory = true;
+                                    if (sellerUserId > 0) {
+                                        updated = sellers.get(index).editProductDB(productId, oldProduct, newProductName, newDescription, storeName, newQuantity, newPrice, newCategory, sellerUserId, changeReason);
                                     } else {
-                                        System.out.println("Please enter a number between 1 and 7.");
+                                        sellers.get(index).editProduct(oldProduct, newProductName, newDescription, storeName, newQuantity, newPrice, newCategory);
+                                        updated = true;
                                     }
                                 } catch (Exception e) {
-                                    System.out.println("Please enter a valid number between 1 and 7.");
-                                    scanner.nextLine(); // Clear invalid input
+                                    System.err.println("Warning: Unable to update product in database: " + e.getMessage());
+                                    sellers.get(index).editProduct(oldProduct, newProductName, newDescription, storeName, newQuantity, newPrice, newCategory);
+                                    updated = true;
                                 }
+
+                                if (updated) {
+                                    sellers.get(index).writerToSellerFileEditProduct(oldProduct.getName(), oldProduct.getQuantity(), oldProduct.getPrice(), oldProduct.getDescription(), oldProduct.getCategory(), storeName,
+                                            newProductName, newQuantity, newPrice, newDescription, newCategory);
+                                    System.out.println("Product updated successfully.");
+                                }
+                            } catch (Exception e) {
+                                System.err.println("Error editing product: " + e.getMessage());
                             }
-                            
-                            ProductCategory newCategory = ProductCategory.values()[categoryChoice - 1];
-                            // For editing, we assume the old product was SHOES category (backward compatibility)
-                            ProductCategory oldCategory = ProductCategory.SHOES;
-                            sellers.get(index).writerToSellerFileEditProduct(productName, quantity, price, description, oldCategory, storeName,
-                                    newProductName, newQuantity, newPrice, newDescription, newCategory);
                         }
                         break;
                     case 5:
@@ -533,7 +391,22 @@ public class Marketplace {
                         }
                         break;
                     case 6:
-                        System.out.println("");
+                        System.out.println("What is the name of the store for which you want to view change history?");
+                        storeName = scanner.nextLine();
+                        if (sellers.get(index).checkIfStoreExists(storeName)) {
+                            String productName = promptLimitedText(scanner, "Enter the product name:", MAX_PRODUCT_NAME_LENGTH, false);
+                            try {
+                                ProductDAO productDAO = new ProductDAO();
+                                int productId = productDAO.getProductId(productName, storeName);
+                                if (productId <= 0) {
+                                    System.out.println("Unable to locate that product in " + storeName + ".");
+                                } else {
+                                    sellers.get(index).viewProductAuditTrail(productId);
+                                }
+                            } catch (Exception e) {
+                                System.err.println("Unable to display change history: " + e.getMessage());
+                            }
+                        }
                         break;
                     default:
                         System.out.println("");
@@ -556,9 +429,16 @@ public class Marketplace {
                 System.out.println("2: View your shopping cart");
                 System.out.println("3: View your purchase history");
                 System.out.println("4: Enter a review for a product you have purchased");
+                System.out.println("5: View your reward points balance");
+                System.out.println("6: Redeem reward points");
                 int choice3 = scanner.nextInt();
                 scanner.nextLine();
-                switch (choice3) {
+                if (choice3 == 5) {
+                    customer.displayRewardPoints();
+                } else if (choice3 == 6) {
+                    handleRewardRedemption(scanner, customer);
+                } else {
+                    switch (choice3) {
                     case 1:
                         System.out.println("On what basis would you like to search by?");
                         System.out.println("1. NAME");
@@ -923,22 +803,7 @@ public class Marketplace {
                         }
                         break;
                     case 3:
-                        try {
-                            BufferedReader br = new BufferedReader(new FileReader(customer.getEmail()));
-                            System.out.println(customer.getEmail() + "'s purchase history: \n");
-                            String line = br.readLine();
-                            boolean trip = false;
-                            while ((line = br.readLine()) != null) {
-                                if (line.equals("-------")) {
-                                    trip = true;
-                                }
-                                if (!trip) {
-                                    System.out.println(line);
-                                }
-                            }
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
+                        customer.viewOrderHistory(scanner);
                         break;
                     case 4:
                         System.out.println("Enter the name of the product whose review you want to give");
@@ -998,7 +863,8 @@ public class Marketplace {
                             e.printStackTrace();
                         }
 
-
+                    
+                }
                 }
                 System.out.println("Do you want to perform another activity. (yes/no)");
                 keepGoing = scanner.nextLine();
@@ -1013,5 +879,383 @@ public class Marketplace {
             System.err.println("Error closing database connection: " + e.getMessage());
         }
     }
-}
 
+    private static String promptLimitedText(Scanner scanner, String prompt, int maxLength, boolean allowEmpty) {
+        while (true) {
+            System.out.println(prompt);
+            String input = scanner.nextLine();
+            if (input == null) {
+                input = "";
+            }
+            input = input.trim();
+            if (input.isEmpty() && !allowEmpty) {
+                System.out.println("This field cannot be empty.");
+                continue;
+            }
+            if (input.length() > maxLength) {
+                System.out.println("Input too long. It will be truncated to " + maxLength + " characters.");
+                input = input.substring(0, maxLength);
+            }
+            return input;
+        }
+    }
+
+    private static String promptUpdatedText(Scanner scanner, String prompt, String currentValue, int maxLength) {
+        System.out.println(prompt + " (press Enter to keep \"" + currentValue + "\")");
+        String input = scanner.nextLine().trim();
+        if (input.isEmpty()) {
+            return currentValue;
+        }
+        if (input.length() > maxLength) {
+            System.out.println("Input too long. It will be truncated to " + maxLength + " characters.");
+            input = input.substring(0, maxLength);
+        }
+        return input;
+    }
+
+    private static int promptNonNegativeInt(Scanner scanner, String prompt) {
+        while (true) {
+            System.out.println(prompt);
+            String input = scanner.nextLine().trim();
+            try {
+                int value = Integer.parseInt(input);
+                if (value < 0) {
+                    System.out.println("Please enter a value of 0 or greater.");
+                } else {
+                    return value;
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Please enter a numeric value.");
+            }
+        }
+    }
+
+    private static int promptUpdatedInt(Scanner scanner, String prompt, int currentValue) {
+        System.out.println(prompt + " (current value: " + currentValue + ", press Enter to keep current value)");
+        while (true) {
+            String input = scanner.nextLine().trim();
+            if (input.isEmpty()) {
+                return currentValue;
+            }
+            try {
+                int value = Integer.parseInt(input);
+                if (value < 0) {
+                    System.out.println("Please enter a value of 0 or greater.");
+                } else {
+                    return value;
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Please enter a numeric value.");
+            }
+        }
+    }
+
+    private static double promptPositiveDouble(Scanner scanner, String prompt) {
+        while (true) {
+            System.out.println(prompt);
+            String input = scanner.nextLine().trim();
+            try {
+                double value = Double.parseDouble(input);
+                if (value <= 0) {
+                    System.out.println("Please enter a value greater than 0.");
+                } else {
+                    return value;
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Please enter a numeric value.");
+            }
+        }
+    }
+
+    private static double promptUpdatedDouble(Scanner scanner, String prompt, double currentValue) {
+        System.out.println(prompt + " (current value: " + currentValue + ", press Enter to keep current value)");
+        while (true) {
+            String input = scanner.nextLine().trim();
+            if (input.isEmpty()) {
+                return currentValue;
+            }
+            try {
+                double value = Double.parseDouble(input);
+                if (value <= 0) {
+                    System.out.println("Please enter a value greater than 0.");
+                } else {
+                    return value;
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Please enter a numeric value.");
+            }
+        }
+    }
+
+    private static ProductCategory promptForCategorySelection(Scanner scanner) {
+        System.out.println("Please select a category:");
+        for (int i = 0; i < ProductCategory.values().length; i++) {
+            System.out.println((i + 1) + ". " + ProductCategory.values()[i].getDisplayName());
+        }
+        while (true) {
+            String input = scanner.nextLine().trim();
+            try {
+                int choice = Integer.parseInt(input);
+                if (choice >= 1 && choice <= ProductCategory.values().length) {
+                    return ProductCategory.values()[choice - 1];
+                }
+            } catch (NumberFormatException e) {
+                // ignored, prompt again
+            }
+            System.out.println("Please enter a number between 1 and " + ProductCategory.values().length + ".");
+        }
+    }
+
+    private static ProductCategory promptUpdatedCategory(Scanner scanner, ProductCategory currentCategory) {
+        System.out.println("Press Enter to keep the current category (" + currentCategory.getDisplayName() + ") or enter a new category number:");
+        for (int i = 0; i < ProductCategory.values().length; i++) {
+            System.out.println((i + 1) + ". " + ProductCategory.values()[i].getDisplayName());
+        }
+        while (true) {
+            String input = scanner.nextLine().trim();
+            if (input.isEmpty()) {
+                return currentCategory;
+            }
+            try {
+                int choice = Integer.parseInt(input);
+                if (choice >= 1 && choice <= ProductCategory.values().length) {
+                    return ProductCategory.values()[choice - 1];
+                }
+            } catch (NumberFormatException e) {
+                // ignored
+            }
+            System.out.println("Please enter a number between 1 and " + ProductCategory.values().length + " or press Enter to keep the current category.");
+        }
+    }
+
+    private static String promptChangeReason(Scanner scanner) {
+        while (true) {
+            System.out.println("Please enter a reason for this change:");
+            String input = scanner.nextLine().trim();
+            if (input.isEmpty()) {
+                System.out.println("A reason is required to log this change.");
+                continue;
+            }
+            if (input.length() > MAX_CHANGE_REASON_LENGTH) {
+                System.out.println("Reason too long. It will be truncated to " + MAX_CHANGE_REASON_LENGTH + " characters.");
+                input = input.substring(0, MAX_CHANGE_REASON_LENGTH);
+            }
+            return input;
+        }
+    }
+
+    private static void handleRewardRedemption(Scanner scanner, Customer customer) {
+        int points = promptNonNegativeInt(scanner, "How many points would you like to redeem?");
+        if (points <= 0) {
+            System.out.println("Please enter a positive number of points.");
+            return;
+        }
+        double discount = customer.redeemRewardPoints(points);
+        if (discount > 0) {
+            System.out.println("Redemption successful. Discount applied: $" + String.format("%.2f", discount));
+        } else {
+            System.out.println("Unable to redeem points. Please ensure you have enough points.");
+        }
+    }
+
+    private static class AccountRecord {
+        final String email;
+        final String password;
+        final String role;
+
+        AccountRecord(String email, String password, String role) {
+            this.email = email;
+            this.password = password;
+            this.role = role;
+        }
+    }
+
+    private static ArrayList<AccountRecord> loadAccountRecords() {
+        ArrayList<AccountRecord> accounts = new ArrayList<>();
+        File accountsFile = new File("Accounts.txt");
+        if (!accountsFile.exists()) {
+            return accounts;
+        }
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(accountsFile))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(",");
+                if (parts.length >= 3) {
+                    accounts.add(new AccountRecord(parts[0].trim(), parts[1].trim(), normalizeRole(parts[2])));
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Unable to read the accounts file: " + e.getMessage());
+        }
+
+        return accounts;
+    }
+
+    private static AccountRecord attemptLogin(Scanner scanner) {
+        ArrayList<AccountRecord> accounts = loadAccountRecords();
+        if (accounts.isEmpty()) {
+            System.out.println("No accounts exist yet. Please create an account first.");
+            return null;
+        }
+
+        Map<String, AccountRecord> lookup = new HashMap<>();
+        for (AccountRecord account : accounts) {
+            lookup.put(account.email.toLowerCase(), account);
+        }
+
+        int attempts = 0;
+        while (attempts < 3) {
+            System.out.println(ENTER_YOUR_EMAIL);
+            String emailInput = scanner.nextLine().trim();
+            if (emailInput.isEmpty()) {
+                System.out.println("E-mail is required.");
+                attempts++;
+                continue;
+            }
+
+            AccountRecord record = lookup.get(emailInput.toLowerCase());
+            if (record == null) {
+                System.out.println("This e-mail does not exist in our database.");
+                attempts++;
+                continue;
+            }
+
+            System.out.println(LOGIN_PASSWORD_PROMPT);
+            String passwordInput = scanner.nextLine();
+            if (passwordInput == null || passwordInput.trim().isEmpty()) {
+                System.out.println("Password is required.");
+                attempts++;
+                continue;
+            }
+
+            if (!record.password.equals(passwordInput)) {
+                System.out.println("Incorrect password.");
+                attempts++;
+                continue;
+            }
+
+            System.out.println("Login successful!");
+            ensureUserExistsInDatabase(record.email, record.password, record.role);
+            return record;
+        }
+
+        System.out.println("Maximum login attempts reached. Returning to the main menu.");
+        return null;
+    }
+
+    private static AccountRecord handleAccountCreation(Scanner scanner) {
+        ArrayList<AccountRecord> accounts = loadAccountRecords();
+        String email = promptForUniqueEmail(scanner, accounts);
+        String password = promptForPassword(scanner);
+        String role = promptForUserType(scanner);
+
+        AccountRecord record = new AccountRecord(email, password, role);
+        if (!saveAccountRecord(record)) {
+            return null;
+        }
+
+        if ("SELLER".equals(role)) {
+            Seller seller = new Seller(email);
+            sellers.add(seller);
+            appendSellerRecord(email);
+        }
+
+        ensureUserExistsInDatabase(record.email, record.password, record.role);
+        return record;
+    }
+
+    private static String promptForUniqueEmail(Scanner scanner, ArrayList<AccountRecord> accounts) {
+        while (true) {
+            System.out.println(ENTER_YOUR_EMAIL);
+            String emailInput = scanner.nextLine().trim();
+
+            if (!isValidEmail(emailInput)) {
+                System.out.println("Invalid e-mail.");
+                continue;
+            }
+
+            boolean exists = false;
+            for (AccountRecord record : accounts) {
+                if (record.email.equalsIgnoreCase(emailInput)) {
+                    exists = true;
+                    break;
+                }
+            }
+
+            if (exists) {
+                System.out.println("This e-mail has already been taken.");
+                continue;
+            }
+
+            return emailInput;
+        }
+    }
+
+    private static String promptForPassword(Scanner scanner) {
+        while (true) {
+            System.out.println(CREATE_PASSWORD_PROMPT);
+            String passwordInput = scanner.nextLine();
+            if (passwordInput != null && passwordInput.length() > 5) {
+                return passwordInput;
+            }
+            System.out.println("Invalid password. Please enter a valid Password:");
+        }
+    }
+
+    private static String promptForUserType(Scanner scanner) {
+        System.out.println(BUYER_OR_SELLER);
+        while (true) {
+            String input = scanner.nextLine().trim();
+            if ("1".equals(input)) {
+                return "CUSTOMER";
+            } else if ("2".equals(input)) {
+                return "SELLER";
+            }
+            System.out.println("Please enter either 1 or 2.");
+        }
+    }
+
+    private static boolean saveAccountRecord(AccountRecord record) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter("Accounts.txt", true))) {
+            writer.write(record.email + "," + record.password + "," + record.role + System.lineSeparator());
+            return true;
+        } catch (IOException e) {
+            System.out.println("Error writing to the accounts file.");
+            return false;
+        }
+    }
+
+    private static void appendSellerRecord(String email) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter("Sellers.txt", true))) {
+            writer.write(email + "," + System.lineSeparator());
+        } catch (IOException e) {
+            System.out.println("Error writing to the seller file.");
+        }
+    }
+
+    private static boolean isValidEmail(String email) {
+        return email != null && email.contains("@") &&
+            (email.endsWith(".com") || email.endsWith(".edu") || email.endsWith(".gov"));
+    }
+
+    private static String normalizeRole(String role) {
+        if (role == null) {
+            return "CUSTOMER";
+        }
+        role = role.trim().toUpperCase();
+        return "SELLER".equals(role) ? "SELLER" : "CUSTOMER";
+    }
+
+    private static void ensureUserExistsInDatabase(String username, String password, String role) {
+        try {
+            UserDAO userDAO = new UserDAO();
+            int userId = userDAO.getUserId(username);
+            if (userId <= 0) {
+                userDAO.createUser(username, password, username, role.toLowerCase());
+            }
+        } catch (Exception e) {
+            System.err.println("Warning: Unable to sync account with database: " + e.getMessage());
+        }
+    }
+}

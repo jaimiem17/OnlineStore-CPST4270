@@ -185,6 +185,10 @@ public class ProductDAO {
      * @return true if successful, false otherwise
      */
     public boolean updateProduct(int productId, String field, String oldValue, String newValue, int userId) {
+        return updateProduct(productId, field, oldValue, newValue, userId, "");
+    }
+    
+    public boolean updateProduct(int productId, String field, String oldValue, String newValue, int userId, String changeReason) {
         String sql = "";
         
         // Determine which field to update
@@ -224,6 +228,9 @@ public class ProductDAO {
                 try {
                     ChangeLogDAO changeLogDAO = new ChangeLogDAO();
                     String changeType = field.substring(0, 1).toUpperCase() + field.substring(1) + " Update";
+                    if (changeReason != null && !changeReason.trim().isEmpty()) {
+                        changeType = changeType + " - " + changeReason.trim();
+                    }
                     changeLogDAO.logChange(productId, userId, changeType, oldValue, newValue);
                 } catch (SQLException e) {
                     System.err.println("Warning: Failed to log change: " + e.getMessage());
@@ -253,6 +260,10 @@ public class ProductDAO {
      * @return true if successful, false otherwise
      */
     public boolean updateProduct(int productId, String name, String category, double price, int quantity, String description, int userId) {
+        return updateProduct(productId, name, category, price, quantity, description, userId, "");
+    }
+    
+    public boolean updateProduct(int productId, String name, String category, double price, int quantity, String description, int userId, String changeReason) {
         // First, get the old values for change logging
         Product oldProduct = getProductById(productId);
         if (oldProduct == null) {
@@ -282,32 +293,34 @@ public class ProductDAO {
                     ChangeLogDAO changeLogDAO = new ChangeLogDAO();
                     
                     // Log price change
+                    String reasonSuffix = (changeReason != null && !changeReason.trim().isEmpty()) ? " - " + changeReason.trim() : "";
+                    
                     if (oldProduct.getPrice() != price) {
-                        changeLogDAO.logChange(productId, userId, "Price Update",
+                        changeLogDAO.logChange(productId, userId, "Price Update" + reasonSuffix,
                             String.valueOf(oldProduct.getPrice()), String.valueOf(price));
                     }
                     
                     // Log quantity change
                     if (oldProduct.getQuantity() != quantity) {
-                        changeLogDAO.logChange(productId, userId, "Quantity Update",
+                        changeLogDAO.logChange(productId, userId, "Quantity Update" + reasonSuffix,
                             String.valueOf(oldProduct.getQuantity()), String.valueOf(quantity));
                     }
                     
                     // Log name change
                     if (!oldProduct.getName().equals(name)) {
-                        changeLogDAO.logChange(productId, userId, "Name Update",
+                        changeLogDAO.logChange(productId, userId, "Name Update" + reasonSuffix,
                             oldProduct.getName(), name);
                     }
                     
                     // Log category change
                     if (!oldProduct.getCategory().name().equals(category)) {
-                        changeLogDAO.logChange(productId, userId, "Category Update",
+                        changeLogDAO.logChange(productId, userId, "Category Update" + reasonSuffix,
                             oldProduct.getCategory().name(), category);
                     }
                     
                     // Log description change
                     if (!oldProduct.getDescription().equals(description)) {
-                        changeLogDAO.logChange(productId, userId, "Description Update",
+                        changeLogDAO.logChange(productId, userId, "Description Update" + reasonSuffix,
                             oldProduct.getDescription(), description);
                     }
                     

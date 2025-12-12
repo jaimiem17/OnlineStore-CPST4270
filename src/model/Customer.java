@@ -1,5 +1,8 @@
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
 import java.io.*;
 
 public class Customer {
@@ -323,7 +326,7 @@ public class Customer {
     /**
      * Displays order history from the database
      */
-    public void viewOrderHistory() {
+    public void viewOrderHistory(Scanner scanner) {
         try {
             UserDAO userDAO = new UserDAO();
             int userId = userDAO.getUserId(this.email);
@@ -343,8 +346,10 @@ public class Customer {
             
             System.out.println("\n=== Order History ===");
             System.out.println("=====================");
+            Map<Integer, Order> orderLookup = new HashMap<>();
             
             for (Order order : orders) {
+                orderLookup.put(order.getOrderId(), order);
                 System.out.println("\nOrder #" + order.getOrderId() + 
                     " - Date: " + order.getOrderDate() + 
                     " - Total: $" + String.format("%.2f", order.getTotalPrice()));
@@ -357,6 +362,40 @@ public class Customer {
                         " = $" + String.format("%.2f", detail.getSubtotal()));
                 }
                 System.out.println("---");
+            }
+            
+            if (scanner != null) {
+                while (true) {
+                    System.out.println("Enter an Order ID to review again, or press Enter to return to the menu:");
+                    String input = scanner.nextLine().trim();
+                    
+                    if (input.isEmpty()) {
+                        break;
+                    }
+                    
+                    try {
+                        int orderId = Integer.parseInt(input);
+                        Order selected = orderLookup.get(orderId);
+                        if (selected == null) {
+                            System.out.println("Invalid order selection. Please try again.");
+                            continue;
+                        }
+                        
+                        System.out.println("\nOrder #" + selected.getOrderId() + 
+                            " - Date: " + selected.getOrderDate() + 
+                            " - Total: $" + String.format("%.2f", selected.getTotalPrice()));
+                        System.out.println("Items:");
+                        for (OrderDetail detail : selected.getOrderDetails()) {
+                            System.out.println("  - " + detail.getProductName() + 
+                                " x" + detail.getQuantity() + 
+                                " @ $" + String.format("%.2f", detail.getProductPrice()) + 
+                                " = $" + String.format("%.2f", detail.getSubtotal()));
+                        }
+                        System.out.println("---");
+                    } catch (NumberFormatException nfe) {
+                        System.out.println("Invalid order selection. Please try again.");
+                    }
+                }
             }
             
         } catch (Exception e) {
