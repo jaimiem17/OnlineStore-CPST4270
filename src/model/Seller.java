@@ -201,6 +201,12 @@ public class Seller {
     public boolean editProductDB(int productId, Product oldProduct, String newName, String newDesc, 
                                  String storeName, int newQuantity, double newPrice, 
                                  ProductCategory newCategory, int userId) {
+        return editProductDB(productId, oldProduct, newName, newDesc, storeName, newQuantity, newPrice, newCategory, userId, "");
+    }
+    
+    public boolean editProductDB(int productId, Product oldProduct, String newName, String newDesc, 
+                                 String storeName, int newQuantity, double newPrice, 
+                                 ProductCategory newCategory, int userId, String changeReason) {
         // Validate category
         if (newCategory == null) {
             System.out.println("Error: Product category cannot be null");
@@ -218,30 +224,30 @@ public class Seller {
         
         // Update name if changed
         if (!oldProduct.getName().equals(newName)) {
-            success &= productDAO.updateProduct(productId, "name", oldProduct.getName(), newName, userId);
+            success &= productDAO.updateProduct(productId, "name", oldProduct.getName(), newName, userId, changeReason);
         }
         
         // Update description if changed
         if (!oldProduct.getDescription().equals(newDesc)) {
-            success &= productDAO.updateProduct(productId, "description", oldProduct.getDescription(), newDesc, userId);
+            success &= productDAO.updateProduct(productId, "description", oldProduct.getDescription(), newDesc, userId, changeReason);
         }
         
         // Update price if changed
         if (oldProduct.getPrice() != newPrice) {
             success &= productDAO.updateProduct(productId, "price", 
-                String.valueOf(oldProduct.getPrice()), String.valueOf(newPrice), userId);
+                String.valueOf(oldProduct.getPrice()), String.valueOf(newPrice), userId, changeReason);
         }
         
         // Update quantity if changed
         if (oldProduct.getQuantity() != newQuantity) {
             success &= productDAO.updateProduct(productId, "quantity", 
-                String.valueOf(oldProduct.getQuantity()), String.valueOf(newQuantity), userId);
+                String.valueOf(oldProduct.getQuantity()), String.valueOf(newQuantity), userId, changeReason);
         }
         
         // Update category if changed
         if (oldProduct.getCategory() != newCategory) {
             success &= productDAO.updateProduct(productId, "category", 
-                oldProduct.getCategory().name(), newCategory.name(), userId);
+                oldProduct.getCategory().name(), newCategory.name(), userId, changeReason);
         }
         
         if (success) {
