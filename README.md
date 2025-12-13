@@ -45,6 +45,8 @@ javac src/main/*.java src/model/*.java src/dao/*.java src/service/*.java src/uti
 
 ### Running the Application
 
+> Detailed installation and execution steps are available in [RUNNING.md](RUNNING.md).
+
 ```bash
 # Run the marketplace
 java -cp ".:lib/h2.jar" src/main/Marketplace
