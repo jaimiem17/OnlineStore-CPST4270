@@ -26,26 +26,7 @@ A Java-based console application for managing an online marketplace with support
 └── lib/               # External libraries (H2 database)
 ```
 
-## Getting Started
-
-### Prerequisites
-
-- Java Development Kit (JDK) 8 or higher
-- H2 Database (included in `lib/h2.jar`)
-
-### Compilation
-
-```bash
-# Compile all source files
-javac -cp "lib/h2.jar" src/**/*.java
-
-# Or compile specific modules
-javac src/main/*.java src/model/*.java src/dao/*.java src/service/*.java src/util/*.java
-```
-
-### Running the Application
-
-> Detailed installation and execution steps are available in [RUNNING.md](RUNNING.md).
+## [Click here for a guide to get started](RUNNING.md).
 
 
 ## Product Categories
