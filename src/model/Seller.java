@@ -288,7 +288,7 @@ public class Seller {
                 index = i;
             }
         }
-        try (BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"))) {
+        try (BufferedReader bfr = new BufferedReader(new FileReader(FileConstants.SELLERS_FILE))) {
             String line = "";
             while ((line = bfr.readLine()) != null) {
                 if (!line.startsWith(this.email) || !line.contains(storeName)) {
@@ -299,12 +299,12 @@ public class Seller {
         } catch (IOException e) {
             System.out.println();
         }
-        try (BufferedWriter bwr = new BufferedWriter(new FileWriter("Sellers.txt"))) {
+        try (BufferedWriter bwr = new BufferedWriter(new FileWriter(FileConstants.SELLERS_FILE))) {
             for (int i = 0; i < otherSellers.size(); i++) {
                 bwr.write(otherSellers.get(i) + "\n");
             }
 
-            bwr.write(this.email + "," + stores.get(index).toString());
+            bwr.write(this.email + "," + stores.get(index).toString() + "\n");
 
             bwr.flush();
         } catch (IOException e) {
@@ -342,7 +342,7 @@ public class Seller {
                 index = i;
             }
         }
-        try (BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"))) {
+        try (BufferedReader bfr = new BufferedReader(new FileReader(FileConstants.SELLERS_FILE))) {
             String line = "";
             while ((line = bfr.readLine()) != null) {
                 if (!line.startsWith(this.email) || !line.contains(storeName)) {
@@ -353,12 +353,12 @@ public class Seller {
         } catch (IOException e) {
             System.out.println();
         }
-        try (BufferedWriter bwr = new BufferedWriter(new FileWriter("Sellers.txt"))) {
+        try (BufferedWriter bwr = new BufferedWriter(new FileWriter(FileConstants.SELLERS_FILE))) {
             for (int i = 0; i < otherSellers.size(); i++) {
                 bwr.write(otherSellers.get(i) + "\n");
             }
 
-            bwr.write(this.email + "," + stores.get(index).toString());
+            bwr.write(this.email + "," + stores.get(index).toString() + "\n");
 
             bwr.flush();
         } catch (IOException e) {
@@ -386,7 +386,7 @@ public class Seller {
                 index = i;
             }
         }
-        try (BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"))) {
+        try (BufferedReader bfr = new BufferedReader(new FileReader(FileConstants.SELLERS_FILE))) {
             String line = "";
             while ((line = bfr.readLine()) != null) {
                 if (!line.startsWith(this.email) || !line.contains(storeName)) {
@@ -397,12 +397,12 @@ public class Seller {
         } catch (IOException e) {
             System.out.println();
         }
-        try (BufferedWriter bwr = new BufferedWriter(new FileWriter("Sellers.txt"))) {
+        try (BufferedWriter bwr = new BufferedWriter(new FileWriter(FileConstants.SELLERS_FILE))) {
             for (int i = 0; i < otherSellers.size(); i++) {
                 bwr.write(otherSellers.get(i) + "\n");
             }
 
-            bwr.write(this.email + "," + stores.get(index).toString());
+            bwr.write(this.email + "," + stores.get(index).toString() + "\n");
 
             bwr.flush();
         } catch (IOException e) {
@@ -424,7 +424,7 @@ public class Seller {
         seller@seller.com,Adidas,
          */
         Store store = new Store(storeName);
-        try (BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"))) {
+        try (BufferedReader bfr = new BufferedReader(new FileReader(FileConstants.SELLERS_FILE))) {
             String line = "";
             while ((line = bfr.readLine()) != null) {
                 if (!line.startsWith(this.email) || !line.contains(storeName)) {
@@ -435,7 +435,7 @@ public class Seller {
         } catch (IOException e) {
             System.out.println();
         }
-        try (BufferedWriter bwr = new BufferedWriter(new FileWriter("Sellers.txt"))) {
+        try (BufferedWriter bwr = new BufferedWriter(new FileWriter(FileConstants.SELLERS_FILE))) {
             for (int i = 0; i < otherSellers.size(); i++) {
                 bwr.write(otherSellers.get(i) + "\n");
             }

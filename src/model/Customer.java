@@ -18,39 +18,26 @@ public class Customer {
 
 
     public void viewCart(String email) {
-        ArrayList<String> temp = new ArrayList<>();
-        try {
-            File f = new File(email);
-            if (!f.isDirectory()) {
-                BufferedReader br = new BufferedReader(new FileReader(f));
-                boolean trip = false;
-                String line = br.readLine();
-                while (line != null) {
-                    if (trip) {
-                        temp.add(line);
-                    }
-                    if (line.equals("-------")) {
-                        trip = true;
-                    }
-
-                    line = br.readLine();
-                }
-            }
-            for (int i = 0; i < temp.size(); i++) {
-                System.out.println(temp.get(i) + "\n");
-            }
-            // Display current shopping cart with category information
-            for (int i = 0; i < shoppingCart.size(); i++) {
-                Product product = shoppingCart.get(i);
-                System.out.println(String.format("Product: %s | Category: %s | Price: $%.2f | Store: %s", 
-                    product.getName(), 
-                    product.getCategory().getDisplayName(), 
-                    product.getPrice(), 
-                    product.getStore()));
-            }
-        } catch (Exception e) {
+        if (shoppingCart == null || shoppingCart.isEmpty()) {
             System.out.println("There is nothing in your shopping cart.");
+            return;
         }
+
+        System.out.println("\n--- Your Shopping Cart ---");
+        double total = 0.0;
+        for (int i = 0; i < shoppingCart.size(); i++) {
+            Product product = shoppingCart.get(i);
+            double lineTotal = product.getPrice() * product.getQuantity();
+            total += lineTotal;
+            System.out.println(String.format("%d) %s x%d | %s | $%.2f each | Line: $%.2f",
+                    (i + 1),
+                    product.getName(),
+                    product.getQuantity(),
+                    (product.getCategory() != null ? product.getCategory().getDisplayName() : "Uncategorized"),
+                    product.getPrice(),
+                    lineTotal));
+        }
+        System.out.println("Cart Total: $" + String.format("%.2f", total));
     }
 
     public void addToCart(Product product) {

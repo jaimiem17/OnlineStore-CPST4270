@@ -1,10 +1,8 @@
+import java.io.*;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
-import java.io.*;
-import java.util.function.BiFunction;
 
 public class Marketplace {
     public static final String WELCOME_PROMPT = "Welcome to our Marketplace!";
@@ -21,10 +19,10 @@ public class Marketplace {
     private static final int MAX_DESCRIPTION_LENGTH = 300;
     private static final int MAX_CHANGE_REASON_LENGTH = 120;
 
-    private static ArrayList<Seller> sellers = new ArrayList<>();
+    public static ArrayList<Seller> sellers = new ArrayList<>();
 
     public static void loadMarket() {
-        File f = new File("Sellers.txt");
+        File f = new File(FileConstants.SELLERS_FILE);
         if (f.exists()) {
             try (BufferedReader bfr = new BufferedReader(new FileReader(f))) {
                 String line = "";
@@ -66,13 +64,16 @@ public class Marketplace {
                         // Find or create seller
                         Seller seller = findOrCreateSeller(sellerEmail);
                         
-                        // Create store
-                        Store store = new Store(storeName);
+                        // Find or create store (avoid duplicates)
+                        Store store = findOrCreateStore(seller, storeName);
                         
                         // Parse products using migration service
                         try {
                             ArrayList<Product> products = DataMigrationService.parseProductsFromLine(currentLine);
                             for (Product product : products) {
+                                // Ensure product's store name matches the Store object's name
+                                // This prevents mismatches when the CSV has inconsistent store names
+                                product.setStoreName(storeName);
                                 store.addProduct(product);
                             }
                         } catch (Exception e) {
@@ -80,8 +81,6 @@ public class Marketplace {
                             System.out.println("Error: " + e.getMessage());
                             // Continue processing other lines
                         }
-                        
-                        seller.addStores(store);
                         
                     } else if (arr.length == 2) {
                         // Line contains only seller and store info (no products)
@@ -91,9 +90,8 @@ public class Marketplace {
                         // Find or create seller
                         Seller seller = findOrCreateSeller(sellerEmail);
                         
-                        // Create empty store
-                        Store store = new Store(storeName);
-                        seller.addStores(store);
+                        // Find or create empty store (avoid duplicates)
+                        findOrCreateStore(seller, storeName);
                         
                     } else if (arr.length == 1 && !currentLine.trim().isEmpty()) {
                         // Line contains only seller info
@@ -112,7 +110,7 @@ public class Marketplace {
             try {
                 boolean b = f.createNewFile();
             } catch (IOException e) {
-                System.out.println("There was an error creating the sellers file.");
+                System.out.println("There was an error creating the sellers file." + e.getMessage());
             }
         }
     }
@@ -136,11 +134,32 @@ public class Marketplace {
     }
     
     /**
+     * Helper method to find an existing store for a seller or create a new one.
+     * This prevents duplicate stores when the same store appears on multiple lines.
+     * @param seller The seller who owns the store
+     * @param storeName The name of the store
+     * @return The existing or newly created Store object
+     */
+    private static Store findOrCreateStore(Seller seller, String storeName) {
+        // Check if store already exists for this seller
+        for (Store store : seller.getStores()) {
+            if (store.getName().equalsIgnoreCase(storeName)) {
+                return store;
+            }
+        }
+        
+        // Store not found, create new one and add to seller
+        Store newStore = new Store(storeName);
+        seller.addStores(newStore);
+        return newStore;
+    }
+    
+    /**
      * Migrates the data file from legacy format to new format.
      * @param lines All lines from the original file
      */
     private static void migrateDataFile(ArrayList<String> lines) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("Sellers.txt"))) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(FileConstants.SELLERS_FILE))) {
             int migratedLines = 0;
             for (int i = 0; i < lines.size(); i++) {
                 String line = lines.get(i);
@@ -171,7 +190,9 @@ public class Marketplace {
 
 
     public static void main(String[] args) {
-        // Initialize database on startup
+        
+        FileConstants.bootstrapLegacyFilesIfNeeded();
+// Initialize database on startup
         try {
             System.out.println("Initializing database...");
             DatabaseManager.initializeTables();
@@ -179,8 +200,8 @@ public class Marketplace {
             System.out.println();
             
             // Check if migration is needed
-            File accountsFile = new File("Accounts.txt");
-            File sellersFile = new File("Sellers.txt");
+            File accountsFile = new File(FileConstants.ACCOUNTS_FILE);
+            File sellersFile = new File(FileConstants.SELLERS_FILE);
             
             if (accountsFile.exists() || sellersFile.exists()) {
                 System.out.println("Text files detected. Would you like to migrate data to database? (yes/no)");
@@ -232,7 +253,7 @@ public class Marketplace {
 
 
 
-
+// Sellers
         if (userType.equals("SELLER")) {
             Seller s = new Seller(email);
             int index = 0;
@@ -707,6 +728,7 @@ public class Marketplace {
                             case 7:
                                 System.out.println("Displaying the entire marketplace:");
                                 try {
+                                    // Use ProductSearchService for consistency with other search methods
                                     ArrayList<Product> allProducts = ProductSearchService.getAllProducts();
                                     
                                     if (allProducts.isEmpty()) {
@@ -735,68 +757,53 @@ public class Marketplace {
                         scanner.nextLine();
                         switch (choice5) {
                             case 1:
-                                try {
-                                    BufferedReader br = new BufferedReader(new FileReader(email));
-                                    ArrayList<String> lines = new ArrayList<>();
-                                    ArrayList<String> cart = new ArrayList<>();
-                                    String line = "";
-                                    boolean trip = false;
-                                    while ((line = br.readLine()) != null) {
-                                        lines.add(line);
-                                        if (line.equals("-------")) {
-                                            trip = true;
-                                        }
-                                        if (trip) {
-                                            cart.add(line);
-                                        }
-                                    }
-                                    ArrayList<Product> passCart = new ArrayList<>();
-                                    for (int i = 0; i < cart.size(); i++) {
-                                        String[] temp = cart.get(i).split(",");
-                                        Product product = new Product(temp[0], Integer.parseInt(temp[1]), Double.parseDouble(temp[2]), temp[3], temp[4]);
-                                        passCart.add(product);
-                                    }
-                                    for (int i = 0; i < passCart.size(); i++) {
-                                        for (int j = 0; j < sellers.size(); j++) {
-                                            for (int k = 0; k < sellers.get(i).getStores().size(); k++) {
-                                                if (sellers.get(i).getStores().get(k).equals(passCart.get(i).getStore())) {
-                                                    sellers.get(i).getStores().get(k).processPurchase(passCart.get(i).getName(), passCart.get(i).getQuantity(), customer);
-                                                }
-                                            }
-                                        }
-                                    }
-                                    boolean trip1 = false;
-                                    PrintWriter pw = new PrintWriter(new FileWriter(customer.getEmail(), true));
-                                    for (int i = 0; i < lines.size(); i++) {
-                                        if (lines.get(i).equals("-------")) {
-                                            trip1 = true;
-                                        }
-                                        if (!trip1) {
-                                            pw.append(lines.get(i));
-                                        }
-                                    }
-                                    for (int i = 0; i < passCart.size(); i++) {
-                                        pw.append(passCart.get(i).toString());
-                                    }
-
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
+                                
+                                checkoutCart(customer);
+                                persistMarketplaceToFile();
                                 break;
+
+                            
                             case 2:
                                 System.out.println("Enter the name of the item you wish to add to the cart");
                                 String item = scanner.nextLine();
 
-                                for (int i = 0; i < sellers.size(); i++) {
-                                    for (int j = 0; j < sellers.get(i).getStores().size(); j++) {
-                                        for (int k = 0; k < sellers.get(i).getStores().get(i).getProducts().size(); k++) {
-                                            if (sellers.get(i).getStores().get(i).getProducts().get(k).getName().equals(item)) {
-                                                Product product = sellers.get(i).getStores().get(i).getProducts().get(k);
-                                                customer.addToCart(product);
+                                boolean found = false;
+                                Product foundProduct = null;
+
+                                outerLoop:  // Label to break all loops
+                                for (Seller sellerObj : sellers) {
+                                    for (Store store : sellerObj.getStores()) {
+                                        for (Product product : store.getProducts()) {
+                                            if (product.getName().equalsIgnoreCase(item)) {
+                                                foundProduct = product;
+                                                found = true;
+                                                break outerLoop;  // Exit all loops
                                             }
                                         }
                                     }
                                 }
+
+                                if (found) {
+                                    int maxQty = foundProduct.getQuantity();
+                                    int qtyToAdd = readIntInRange(scanner, "How many would you like? (1-" + maxQty + "): ", 1, maxQty);
+
+                                    // Add a *cart item* with the purchase quantity (not the store inventory quantity)
+                                    Product cartItem = new Product(
+                                            foundProduct.getName(),
+                                            qtyToAdd,
+                                            foundProduct.getPrice(),
+                                            foundProduct.getDescription(),
+                                            foundProduct.getStore(),
+                                            foundProduct.getCategory());
+
+                                    customer.addToCart(cartItem);
+                                    System.out.println("[OK] Added to cart: " + cartItem.getName() + " x" + qtyToAdd);
+                                    System.out.println("Price each: $" + String.format("%.2f", cartItem.getPrice()));
+                                } else {
+                                    System.out.println("[X] Product '" + item + "' not found.");
+                                    System.out.println("Search the marketplace first to see available products.");
+                                }
+
                                 break;
                             default:
                                 System.out.println("Enter a valid choice!");
@@ -1072,7 +1079,7 @@ public class Marketplace {
 
     private static ArrayList<AccountRecord> loadAccountRecords() {
         ArrayList<AccountRecord> accounts = new ArrayList<>();
-        File accountsFile = new File("Accounts.txt");
+        File accountsFile = new File(FileConstants.ACCOUNTS_FILE);
         if (!accountsFile.exists()) {
             return accounts;
         }
@@ -1217,7 +1224,7 @@ public class Marketplace {
     }
 
     private static boolean saveAccountRecord(AccountRecord record) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("Accounts.txt", true))) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(FileConstants.ACCOUNTS_FILE, true))) {
             writer.write(record.email + "," + record.password + "," + record.role + System.lineSeparator());
             return true;
         } catch (IOException e) {
@@ -1227,7 +1234,7 @@ public class Marketplace {
     }
 
     private static void appendSellerRecord(String email) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("Sellers.txt", true))) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(FileConstants.SELLERS_FILE, true))) {
             writer.write(email + "," + System.lineSeparator());
         } catch (IOException e) {
             System.out.println("Error writing to the seller file.");
@@ -1247,7 +1254,100 @@ public class Marketplace {
         return "SELLER".equals(role) ? "SELLER" : "CUSTOMER";
     }
 
-    private static void ensureUserExistsInDatabase(String username, String password, String role) {
+    
+
+    // -------------------------
+    // Shopping cart + checkout
+    // -------------------------
+
+    private static int readIntInRange(Scanner scanner, String prompt, int min, int max) {
+        while (true) {
+            System.out.print(prompt);
+            String raw = scanner.nextLine().trim();
+            try {
+                int val = Integer.parseInt(raw);
+                if (val < min || val > max) {
+                    System.out.println("Please enter a number between " + min + " and " + max + ".");
+                    continue;
+                }
+                return val;
+            } catch (NumberFormatException e) {
+                System.out.println("Please enter a valid whole number.");
+            }
+        }
+    }
+
+    private static Store findStoreByName(String storeName) {
+        if (storeName == null) return null;
+        for (Seller s : sellers) {
+            for (Store st : s.getStores()) {
+                if (st.getName().equalsIgnoreCase(storeName)) {
+                    return st;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static void checkoutCart(Customer customer) {
+        ArrayList<Product> cart = customer.getShoppingCart();
+
+        if (cart == null || cart.isEmpty()) {
+            System.out.println("There is nothing in your shopping cart.");
+            return;
+        }
+
+        System.out.println("\n--- Checkout ---");
+        double total = 0.0;
+
+        // First, validate all items exist + in stock
+        for (Product item : cart) {
+            total += item.getPrice() * item.getQuantity();
+        }
+
+        // Process purchases (updates inventory + reward points)
+        for (Product item : cart) {
+            Store store = findStoreByName(item.getStore());
+            store.processPurchase(item.getName(), item.getQuantity(), customer);
+        }
+
+        // Record order in DB (Order + OrderDetails)
+        customer.processPurchase(total);
+
+        // Write purchase history file + clear cart
+        customer.writePurchaseHistory(new ArrayList<>(cart));
+        customer.clearShoppingCart();
+
+        System.out.println("\n[OK] Checkout complete!");
+        System.out.println("Total charged: $" + String.format("%.2f", total));
+        System.out.println("Reward points earned: " + (int) Math.floor(total) + " (1 point per $1)\n");
+    }
+
+    /**
+     * Persist the in-memory marketplace (sellers/stores/products) back to Sellers.txt
+     * so quantity changes from checkout remain after restarting the program.
+     */
+    private static void persistMarketplaceToFile() {
+        try {
+            FileConstants.ensureDataDir();
+            try (PrintWriter pw = new PrintWriter(new FileWriter(FileConstants.SELLERS_FILE, false))) {
+                for (Seller seller : sellers) {
+                    for (Store store : seller.getStores()) {
+                        StringBuilder sb = new StringBuilder();
+                        sb.append(seller.getEmail()).append(",").append(store.getName());
+                        for (Product product : store.getProducts()) {
+                            sb.append(",").append(product.toCSV());
+                        }
+                        pw.println(sb.toString());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Warning: Unable to persist Sellers file: " + e.getMessage());
+        }
+    }
+
+private static void ensureUserExistsInDatabase(String username, String password, String role) {
         try {
             UserDAO userDAO = new UserDAO();
             int userId = userDAO.getUserId(username);

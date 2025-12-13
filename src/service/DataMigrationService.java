@@ -197,7 +197,7 @@ public class DataMigrationService {
      * @return number of users migrated successfully
      */
     public static int migrateAccountsToDatabase() {
-        File accountsFile = new File("Accounts.txt");
+        File accountsFile = new File(FileConstants.ACCOUNTS_FILE);
         
         if (!accountsFile.exists()) {
             System.out.println("No Accounts.txt file found. Skipping user migration.");
@@ -286,7 +286,7 @@ public class DataMigrationService {
      * @return number of products migrated successfully
      */
     public static int migrateProductsToDatabase() {
-        File sellersFile = new File("Sellers.txt");
+        File sellersFile = new File(FileConstants.SELLERS_FILE);
         
         if (!sellersFile.exists()) {
             System.out.println("No Sellers.txt file found. Skipping product migration.");

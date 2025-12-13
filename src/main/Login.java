@@ -18,7 +18,7 @@ public class Login {
     private static ArrayList<Seller> sellers = new ArrayList<>();
 
     public static void loadMarket() {
-        File f = new File("Sellers.txt");
+        File f = new File(FileConstants.SELLERS_FILE);
         if (f.exists()) {
             try (BufferedReader bfr = new BufferedReader(new FileReader(f))) {
                 String line = "";
@@ -87,7 +87,9 @@ public class Login {
 
 
     public static void main(String[] args) {
-        String email = "";
+        
+        FileConstants.bootstrapLegacyFilesIfNeeded();
+String email = "";
         String password = "";
         String userType = "";
         Scanner scanner = new Scanner(System.in);
@@ -109,7 +111,7 @@ public class Login {
             System.out.println(LOGIN_PASSWORD_PROMPT);
             password = scanner.nextLine();
 
-            File f = new File("Accounts.txt");
+            File f = new File(FileConstants.ACCOUNTS_FILE);
             try {
                 BufferedReader br = new BufferedReader(new FileReader(f));
                 ArrayList<String> accountInfo = new ArrayList<>();
@@ -155,9 +157,9 @@ public class Login {
                 email = scanner.nextLine();
             }
 
-            File f = new File("Accounts.txt");
+            File f = new File(FileConstants.ACCOUNTS_FILE);
             if (f.exists()) {
-                try (BufferedReader bfr = new BufferedReader(new FileReader("Accounts.txt"))) {
+                try (BufferedReader bfr = new BufferedReader(new FileReader(FileConstants.ACCOUNTS_FILE))) {
                     String line = "";
                     while ((line = bfr.readLine()) != null) {
                         String[] arr = line.split(",");
@@ -198,13 +200,13 @@ public class Login {
                 }
 
 
-                try (BufferedWriter bwr = new BufferedWriter(new FileWriter("Accounts.txt", true))) {
+                try (BufferedWriter bwr = new BufferedWriter(new FileWriter(FileConstants.ACCOUNTS_FILE, true))) {
                     bwr.write(email + "," + password + "," + userType + "\n");
                 } catch (IOException io) {
                     System.out.println("Error writing to the accounts file.");
                 }
             } else {
-                f = new File("Accounts.txt");
+                f = new File(FileConstants.ACCOUNTS_FILE);
                 System.out.println(CREATE_PASSWORD_PROMPT);
                 password = scanner.nextLine();
                 if (password == null || password.length() <= 5) { // case of invalid password
@@ -230,7 +232,7 @@ public class Login {
                     Seller seller = new Seller(email);
                     sellers.add(seller); // hope it works
                 }
-                try (BufferedWriter bwr = new BufferedWriter(new FileWriter("Accounts.txt", true))) {
+                try (BufferedWriter bwr = new BufferedWriter(new FileWriter(FileConstants.ACCOUNTS_FILE, true))) {
                     bwr.write(email + "," + password + "," + userType + "\n");
                 } catch (IOException e) {
                     System.out.println("Error writing to the accounts file.");
@@ -397,7 +399,7 @@ public class Login {
                             System.out.println("What is the name of the product you wish to search by:");
                             String searchName = scanner.nextLine();
                             try {
-                                BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"));
+                                BufferedReader bfr = new BufferedReader(new FileReader(FileConstants.SELLERS_FILE));
                                 ArrayList<String> searchByName = new ArrayList<>();
                                 String line = "";
                                 while ((line = bfr.readLine()) != null) {
@@ -419,7 +421,7 @@ public class Login {
                             double searchPrice = scanner.nextDouble();
                             scanner.nextLine();
                             try {
-                                BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"));
+                                BufferedReader bfr = new BufferedReader(new FileReader(FileConstants.SELLERS_FILE));
                                 ArrayList<String> searchByPrice = new ArrayList<>();
                                 String line = "";
                                 while ((line = bfr.readLine()) != null) {
@@ -441,7 +443,7 @@ public class Login {
                             System.out.println("What is the name of the store you would like to search in?");
                             String searchStore = scanner.nextLine();
                             try {
-                            BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"));
+                            BufferedReader bfr = new BufferedReader(new FileReader(FileConstants.SELLERS_FILE));
                             ArrayList<String> searchByStore = new ArrayList<>();
                             String line = "";
                             while ((line = bfr.readLine()) != null) {
@@ -462,7 +464,7 @@ public class Login {
                             System.out.println("What is the description of product you wish to purchase?");
                             String searchDescription = scanner.nextLine();
                             try {
-                                BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"));
+                                BufferedReader bfr = new BufferedReader(new FileReader(FileConstants.SELLERS_FILE));
                                 ArrayList<String> searchByDesc = new ArrayList<>();
                                 String line = "";
                                 while ((line = bfr.readLine()) != null) {
@@ -482,7 +484,7 @@ public class Login {
                         case 5:
                             System.out.println("Displaying all the in-stock products:");
                             try {
-                                BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"));
+                                BufferedReader bfr = new BufferedReader(new FileReader(FileConstants.SELLERS_FILE));
                                 ArrayList<String> searchByQuantity = new ArrayList<>();
                                 String line = "";
                                 while ((line = bfr.readLine()) != null) {
@@ -502,7 +504,7 @@ public class Login {
                         case 6:
                             System.out.println("Displaying the entire marketplace:");
                             try {
-                                BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"));
+                                BufferedReader bfr = new BufferedReader(new FileReader(FileConstants.SELLERS_FILE));
                                 ArrayList<String> market = new ArrayList<>();
                                 String line = "";
                                 while ((line = bfr.readLine()) != null) {

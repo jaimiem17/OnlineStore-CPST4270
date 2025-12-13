@@ -18,7 +18,7 @@ public class ProductSearchService {
     public static ArrayList<String> searchByName(String name, ProductCategory category) {
         ArrayList<String> results = new ArrayList<>();
         
-        try (BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"))) {
+        try (BufferedReader bfr = new BufferedReader(new FileReader(FileConstants.SELLERS_FILE))) {
             String line;
             while ((line = bfr.readLine()) != null) {
                 if (line.trim().isEmpty()) {
@@ -61,7 +61,7 @@ public class ProductSearchService {
     public static ArrayList<String> searchByPrice(double price, ProductCategory category) {
         ArrayList<String> results = new ArrayList<>();
         
-        try (BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"))) {
+        try (BufferedReader bfr = new BufferedReader(new FileReader(FileConstants.SELLERS_FILE))) {
             String line;
             while ((line = bfr.readLine()) != null) {
                 if (line.trim().isEmpty()) {
@@ -109,7 +109,7 @@ public class ProductSearchService {
     public static ArrayList<String> searchByStore(String storeName, ProductCategory category) {
         ArrayList<String> results = new ArrayList<>();
         
-        try (BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"))) {
+        try (BufferedReader bfr = new BufferedReader(new FileReader(FileConstants.SELLERS_FILE))) {
             String line;
             while ((line = bfr.readLine()) != null) {
                 if (line.trim().isEmpty()) {
@@ -152,7 +152,7 @@ public class ProductSearchService {
     public static ArrayList<String> searchByDescription(String description, ProductCategory category) {
         ArrayList<String> results = new ArrayList<>();
         
-        try (BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"))) {
+        try (BufferedReader bfr = new BufferedReader(new FileReader(FileConstants.SELLERS_FILE))) {
             String line;
             while ((line = bfr.readLine()) != null) {
                 if (line.trim().isEmpty()) {
@@ -198,7 +198,7 @@ public class ProductSearchService {
             return results; // Return empty list if no category specified
         }
         
-        try (BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"))) {
+        try (BufferedReader bfr = new BufferedReader(new FileReader(FileConstants.SELLERS_FILE))) {
             String line;
             while ((line = bfr.readLine()) != null) {
                 if (line.trim().isEmpty()) {
@@ -226,7 +226,7 @@ public class ProductSearchService {
     public static ArrayList<ProductCategory> getAvailableCategories() {
         ArrayList<ProductCategory> availableCategories = new ArrayList<>();
         
-        try (BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"))) {
+        try (BufferedReader bfr = new BufferedReader(new FileReader(FileConstants.SELLERS_FILE))) {
             String line;
             while ((line = bfr.readLine()) != null) {
                 if (line.trim().isEmpty()) {
@@ -413,7 +413,7 @@ public class ProductSearchService {
     public static ArrayList<Product> searchInStock() {
         ArrayList<Product> results = new ArrayList<>();
         
-        try (BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"))) {
+        try (BufferedReader bfr = new BufferedReader(new FileReader(FileConstants.SELLERS_FILE))) {
             String line;
             while ((line = bfr.readLine()) != null) {
                 if (line.trim().isEmpty()) {
@@ -450,7 +450,7 @@ public class ProductSearchService {
     public static ArrayList<Product> getAllProducts() {
         ArrayList<Product> results = new ArrayList<>();
         
-        try (BufferedReader bfr = new BufferedReader(new FileReader("Sellers.txt"))) {
+        try (BufferedReader bfr = new BufferedReader(new FileReader(FileConstants.SELLERS_FILE))) {
             String line;
             while ((line = bfr.readLine()) != null) {
                 if (line.trim().isEmpty()) {

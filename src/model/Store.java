@@ -144,12 +144,15 @@ public class Store {
 
     @Override
     public String toString() {
-        String s = this.name + ",";
+        StringBuilder sb = new StringBuilder();
+        sb.append(this.name);
+        // Append CSV representation of each product so that seller file lines
+        // remain machine-parseable by DataMigrationService / ProductSearchService
         for (int i = 0; i < products.size(); i++) {
-            s += products.get(i).toString() + ",";
-
+            sb.append(",");
+            sb.append(products.get(i).toCSV());
         }
-        return s;
+        return sb.toString();
 
     }
 }
