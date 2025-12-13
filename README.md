@@ -47,22 +47,6 @@ javac src/main/*.java src/model/*.java src/dao/*.java src/service/*.java src/uti
 
 > Detailed installation and execution steps are available in [RUNNING.md](RUNNING.md).
 
-```bash
-# Run the marketplace
-java -cp ".:lib/h2.jar" src/main/Marketplace
-
-# Or run the original login flow
-java -cp ".:lib/h2.jar" src/main/Login
-```
-
-### Running Tests
-
-```bash
-javac -cp "lib/h2.jar" tests/*.java
-java -cp ".:lib/h2.jar" tests/TestProductManagement
-java -cp ".:lib/h2.jar" tests/TestUserAuthentication
-java -cp ".:lib/h2.jar" tests/TestOrderSystem
-```
 
 ## Product Categories
 
