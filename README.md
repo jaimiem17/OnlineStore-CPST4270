@@ -11,7 +11,8 @@ A Java-based console application for managing an online marketplace with support
 - **Seller Dashboard**: Multi-store management with sales analytics
 - **Database Support**: H2 database integration with file-based fallback
 
-## [Installation & Run instructions](RUNNING.md)
+## [Click for Installation & Run instructions](RUNNING.md)
+
 
 ## Project Structure
 
