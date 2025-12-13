@@ -1,6 +1,6 @@
 # Happy Feet Marketplace - Installation & Run Guide
 
-This document explains how to build a runnable release of the Happy Feet console marketplace and how to run it with the bundled H2 database.
+This guide explains how to build a runnable release (executable JAR) of the Happy Feet console marketplace and how end users can install and launch it. The project is plain Java and ships with everything it needs (including the H2 database driver) in the repository.
 
 ## Prerequisites
 - Java 8+ (JDK for building, JRE acceptable for running a prebuilt JAR)
